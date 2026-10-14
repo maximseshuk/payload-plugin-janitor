@@ -29,7 +29,7 @@ const relatesTo = (field: Field, target: string): boolean => {
 export const blocksOf = (field: Field, library: Library): (Block | undefined)[] => {
   if (field.type !== 'blocks') return []
 
-  const blocks = (field.blockReferences ?? field.blocks ?? []) as (Block | string)[]
+  const blocks = (field.blocks ?? []) as (Block | string)[]
 
   return blocks.map((block) => (typeof block === 'string' ? library.get(block) : block))
 }

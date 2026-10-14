@@ -137,6 +137,7 @@ const usagePanelOf = (
   value: JanitorCollectionOptions['usagePanel'],
   fields: Field[],
   endpoints: ResolvedOptions['endpoints'],
+  upload: boolean,
 ): ResolvedCollection['usagePanel'] => {
   if (value === false || (value === undefined && !endpoints)) return false
 
@@ -147,7 +148,7 @@ const usagePanelOf = (
   }
 
   const options = value === true || value === undefined ? {} : value
-  const position = options.position ?? 'sidebar'
+  const position = options.position ?? (upload ? 'first' : 'sidebar')
   try {
     insertField(fields, position, usageField())
   } catch (error) {
@@ -210,7 +211,7 @@ const resolveCollection = (
     )
   }
 
-  const usagePanel = usagePanelOf(slug, settings.usagePanel, collection.fields, endpoints)
+  const usagePanel = usagePanelOf(slug, settings.usagePanel, collection.fields, endpoints, upload)
   const blockDelete = settings.blockDelete ?? true
 
   if (!checks.length && !usagePanel && !blockDelete) {

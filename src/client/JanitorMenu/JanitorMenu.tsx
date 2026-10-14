@@ -8,10 +8,10 @@ import {
   useConfig,
   useListQuery,
   useModal,
+  useRouter,
   useSelection,
   useTranslation,
 } from '@payloadcms/ui'
-import { useRouter } from 'next/navigation.js'
 import React, { useCallback, useEffect, useState } from 'react'
 
 import { type Notice, noticeOf, UNDECIDED } from '@/client/findingData.js'

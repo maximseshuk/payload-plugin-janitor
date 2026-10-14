@@ -7,6 +7,7 @@ import type { PurgeReport } from '@/shared/types/index.js'
 import type { ResolvedCollection, ResolvedOptions } from '@/shared/types/resolved.js'
 import type { StorageObject } from '@/shared/types/storage.js'
 
+import type { Stored } from './scan.js'
 import { heartbeat, isHeld, isKeyUnknown, isOldEnough, isUsed, keysOf, namesOf } from './scan.js'
 
 type Finding = {
@@ -22,14 +23,10 @@ type Finding = {
   uploadedAt?: null | string
 }
 
-type Document = {
-  _objectKey?: null | string
+type Document = Stored & {
   createdAt?: null | string
   deletedAt?: null | string
-  filename?: null | string
   id: number | string
-  prefix?: null | string
-  sizes?: null | Record<string, null | { filename?: null | string }>
   updatedAt?: null | string
 }
 

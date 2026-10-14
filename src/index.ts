@@ -105,8 +105,18 @@ const withPlugin = (options: JanitorPluginOptions, config: Config): Config => {
 
 export const janitor = definePlugin<JanitorPluginOptions>({
   slug: PLUGIN_NAME,
-  plugin: ({ config, plugins: _plugins, ...options }) => {
-    return options.enabled === false ? withSchema(options, config) : withPlugin(options, config)
+  plugin: ({ config, options }) => {
+    if (options.enabled === false) return withSchema(options, config)
+
+    if (!config.storage?.length) return withPlugin(options, config)
+
+    return {
+      ...config,
+      storage: [
+        ...config.storage,
+        { collections: [], init: (stored) => withPlugin(options, stored), name: PLUGIN_NAME },
+      ],
+    }
   },
 })
 

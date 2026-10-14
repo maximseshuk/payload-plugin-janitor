@@ -323,7 +323,7 @@ describe(`block references on ${label}`, () => {
       blocks: [{ slug: 'hero', fields: [{ name: 'image', type: 'upload', relationTo: 'media' }] }],
       collections: [
         { slug: 'media', fields: [], upload },
-        { slug: 'landing', fields: [{ name: 'layout', type: 'blocks', blockReferences: ['hero'], blocks: [] }] },
+        { slug: 'landing', fields: [{ name: 'layout', type: 'blocks', blocks: ['hero'] }] },
       ],
     }))
   })
@@ -824,7 +824,7 @@ describe(`fields named parent on ${label}`, () => {
           fields: [
             { name: 'items', type: 'array', fields: [{ name: 'parent', type: 'relationship', relationTo: 'posts' }] },
             { name: 'meta', type: 'group', fields: [{ name: 'parent', type: 'relationship', relationTo: 'posts' }] },
-            { name: 'layout', type: 'blocks', blockReferences: ['reply'], blocks: [] },
+            { name: 'layout', type: 'blocks', blocks: ['reply'] },
           ],
         },
         {
@@ -1303,7 +1303,7 @@ if (onRelational) {
                 { name: 'hero', type: 'upload', relationTo: 'media' },
                 { name: 'gallery', type: 'upload', hasMany: true, relationTo: 'media' },
                 { name: 'cover', type: 'upload', localized: true, relationTo: 'media' },
-                { name: 'layout', type: 'blocks', blockReferences: ['hero'], blocks: [] },
+                { name: 'layout', type: 'blocks', blocks: ['hero'] },
               ],
               versions: { drafts: true },
             },

@@ -75,6 +75,7 @@ export default buildConfig({
           dashboard: {
             defaultLayout: [
               { widgetSlug: 'janitor', width: 'medium' },
+              { widgetSlug: 'activity', width: 'medium' },
               { widgetSlug: 'collections', width: 'full' },
             ],
             widgets: [],

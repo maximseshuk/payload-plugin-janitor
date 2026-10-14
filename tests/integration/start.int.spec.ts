@@ -1,5 +1,5 @@
 import type { CollectionConfig, Payload, PayloadRequest } from 'payload'
-import { createLocalReq, ValidationError } from 'payload'
+import { createPayloadRequest, ValidationError } from 'payload'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 
@@ -224,7 +224,7 @@ describe(`inline start on ${label}`, () => {
     expect(run).toMatchObject({ deleted: 0, failed: 0, skipped: 1 })
     expect(
       await breakdownOf(
-        await createLocalReq({ user: { collection: 'users', id: 1 } as never }, payload),
+        await createPayloadRequest({ payload, user: { collection: 'users', id: 1 } as never }),
         run.id,
         'purge',
       ),
@@ -289,7 +289,7 @@ describe(`purge counts on ${label}`, () => {
     expect(run).toMatchObject({ deleted: 1, failed: 1, freedBytes: 100, mode: 'purge', skipped: 0, status: 'done' })
     expect(
       await breakdownOf(
-        await createLocalReq({ user: { collection: 'users', id: 1 } as never }, payload),
+        await createPayloadRequest({ payload, user: { collection: 'users', id: 1 } as never }),
         run.id,
         'purge',
       ),
@@ -826,7 +826,7 @@ describe(`dashboard widget on ${label}`, () => {
       overrideAccess: true,
     })
 
-  const admin = () => createLocalReq({ user: { collection: 'users', id: 1 } as never }, payload)
+  const admin = () => createPayloadRequest({ payload, user: { collection: 'users', id: 1 } as never })
 
   it('shows zeros and a link to the findings before the first scan', async () => {
     const req = await admin()
@@ -877,7 +877,7 @@ describe(`dashboard widget on ${label}`, () => {
   })
 
   it("reads runs with the reader's access", async () => {
-    await expect(lastScan(await createLocalReq({}, payload))).rejects.toThrow()
+    await expect(lastScan(await createPayloadRequest({ payload }))).rejects.toThrow()
   })
 })
 

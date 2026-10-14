@@ -1,6 +1,6 @@
 {
   "name": "@seshuk/payload-plugin-janitor",
-  "version": "0.1.0",
+  "version": "1.0.0-beta.1",
   "description": "Housekeeping for Payload: find orphaned files, broken uploads and documents nothing references, then delete only what you approve.",
   "keywords": [
     "cleanup",
@@ -178,15 +178,16 @@
   "devDependencies": {
     "@electric-sql/pglite": "0.5.9",
     "@electric-sql/pglite-socket": "0.2.12",
-    "@payloadcms/db-mongodb": "^3.90.2",
-    "@payloadcms/db-postgres": "^3.90.2",
-    "@payloadcms/db-sqlite": "^3.90.2",
-    "@payloadcms/next": "^3.90.2",
-    "@payloadcms/plugin-cloud-storage": "^3.90.2",
-    "@payloadcms/plugin-multi-tenant": "^3.90.2",
-    "@payloadcms/richtext-lexical": "^3.90.2",
-    "@payloadcms/translations": "^3.90.2",
-    "@payloadcms/ui": "^3.90.2",
+    "@payloadcms/db-mongodb": "4.0.0-beta.1",
+    "@payloadcms/db-postgres": "4.0.0-beta.1",
+    "@payloadcms/db-sqlite": "4.0.0-beta.1",
+    "@payloadcms/next": "4.0.0-beta.1",
+    "@payloadcms/plugin-cloud-storage": "4.0.0-beta.1",
+    "@payloadcms/plugin-multi-tenant": "4.0.0-beta.1",
+    "@payloadcms/richtext-lexical": "4.0.0-beta.1",
+    "@payloadcms/transformer-sharp": "4.0.0-beta.1",
+    "@payloadcms/translations": "4.0.0-beta.1",
+    "@payloadcms/ui": "4.0.0-beta.1",
     "@playwright/test": "^1.64.0",
     "@scalar/openapi-types": "^0.9.8",
     "@seshuk/payload-plugin-tooling": "0.2.4",
@@ -198,7 +199,7 @@
     "next": "16.4.0",
     "oxfmt": "^0.72.0",
     "oxlint": "^1.87.0",
-    "payload": "^3.90.2",
+    "payload": "4.0.0-beta.1",
     "react": "catalog:",
     "react-dom": "catalog:",
     "tsdown": "^0.23.1",
@@ -208,9 +209,9 @@
   },
   "peerDependencies": {
     "@aws-sdk/client-s3": "^3.0.0",
-    "@payloadcms/translations": "^3.83.0",
-    "@payloadcms/ui": "^3.83.0",
-    "payload": "^3.83.0",
+    "@payloadcms/translations": ">=4.0.0-beta.0 <4.0.0-canary.0 || ^4.0.0",
+    "@payloadcms/ui": ">=4.0.0-beta.0 <4.0.0-canary.0 || ^4.0.0",
+    "payload": ">=4.0.0-beta.0 <4.0.0-canary.0 || ^4.0.0",
     "react": "^19.0.1 || ^19.1.2 || ^19.2.1",
     "react-dom": "^19.0.1 || ^19.1.2 || ^19.2.1"
   },
@@ -227,11 +228,11 @@
     },
     "runtime": {
       "name": "node",
-      "version": ">=22",
+      "version": ">=24.15.0",
       "onFail": "warn"
     }
   },
   "engines": {
-    "node": ">=22"
+    "node": ">=24.15.0"
   }
 }

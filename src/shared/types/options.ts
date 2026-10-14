@@ -18,7 +18,7 @@ export type CollectionOverride = Partial<Omit<CollectionConfig, 'fields'>> & {
 export type JanitorAccess = (args: { req: PayloadRequest }) => boolean | Promise<boolean>
 
 export type UsageFieldOptions = {
-  /** Where the plugin puts the field. Ignored when the field is added by hand. @default 'sidebar' */
+  /** Where the plugin puts the field. Ignored when the field is added by hand. Payload 4 shows the sidebar of an upload collection below its fields, so there the panel goes first. @default 'sidebar', or 'first' on an upload collection */
   position?: InsertPosition
   /** The plugin's `endpoints.path`, when you changed it. @default '/janitor' */
   endpointsPath?: string
@@ -37,7 +37,7 @@ export type UsagePanelOptions = Omit<UsageFieldOptions, 'endpointsPath'>
 export type JanitorCollectionOptions = {
   /** Which findings a scan writes. `true` is every check this collection can have; `false` scans nothing but keeps `usagePanel` and `blockDelete`. @default true */
   report?: boolean | Check[]
-  /** The «where is this used» panel on the edit view. `true` puts it in the sidebar; an object says where and how much. @default true, or false with `endpoints: false` */
+  /** The «where is this used» panel on the edit view. `true` puts it in the sidebar, or first on an upload collection; an object says where and how much. @default true, or false with `endpoints: false` */
   usagePanel?: boolean | UsagePanelOptions
   /** Refuse `delete` while another document or global still references this one. A reference in an old version counts only with `references.versions: 'used'`. @default true */
   blockDelete?: boolean

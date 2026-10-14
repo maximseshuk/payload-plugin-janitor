@@ -1,5 +1,5 @@
 import { getTranslation } from '@payloadcms/translations'
-import { CheckIcon, GearIcon, SearchIcon, XIcon } from '@payloadcms/ui'
+import { CircledXIcon, ClockIcon, SearchIcon, TrashIcon } from '@payloadcms/ui'
 import type { UIFieldServerProps } from 'payload'
 import React from 'react'
 
@@ -29,16 +29,20 @@ export const RunSummary = async ({ data, id, req }: UIFieldServerProps) => {
   const countOf = (name: string) => (typeof run[name] === 'number' ? number.format(run[name]) : '')
   const head =
     status === 'failed'
-      ? { icon: <XIcon />, text: typeof run.error === 'string' ? run.error : '', title: 'runFailedTitle' }
+      ? {
+          icon: <CircledXIcon size={24} />,
+          text: typeof run.error === 'string' ? run.error : '',
+          title: 'runFailedTitle',
+        }
       : status === 'running'
         ? {
-            icon: <GearIcon />,
+            icon: <ClockIcon />,
             text: t(`${PLUGIN_NAME}:runRunning`),
             title: mode === 'scan' ? 'runScanRunningTitle' : 'runPurgeRunningTitle',
           }
         : mode === 'scan'
           ? { icon: <SearchIcon />, text: t(`${PLUGIN_NAME}:runScan`), title: 'scanDone' }
-          : { icon: <CheckIcon />, text: t(`${PLUGIN_NAME}:runPurge`), title: 'purgeFinished' }
+          : { icon: <TrashIcon />, text: t(`${PLUGIN_NAME}:runPurge`), title: 'purgeFinished' }
   const facts = (
     [
       [`${PLUGIN_NAME}:startedAt`, agoOf(run.startedAt, language)],

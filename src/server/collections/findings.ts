@@ -30,7 +30,7 @@ export const RSC = '@seshuk/payload-plugin-janitor/rsc'
 
 export const DATE = { date: { displayFormat: 'PPpp' } }
 
-export const HIDDEN = { disableGroupBy: true, disableListColumn: true, disableListFilter: true, hidden: true }
+export const HIDDEN = { disabled: { column: true, filter: true, groupBy: true }, hidden: true }
 
 export const adminOf = (options: ResolvedOptions): CollectionConfig['admin'] =>
   options.admin ? { group: options.admin.group } : { hidden: true }
@@ -124,6 +124,7 @@ export const buildFindingsCollection = (options: ResolvedOptions): CollectionCon
       listSearchableFields: ['objectKey'],
       useAsTitle: 'objectKey',
     },
+    authorship: false,
     disableDuplicate: true,
     versions: false,
     indexes: [{ fields: ['collectionSlug', 'objectKey'], unique: true }],
@@ -131,7 +132,7 @@ export const buildFindingsCollection = (options: ResolvedOptions): CollectionCon
       {
         name: 'summary',
         type: 'ui',
-        admin: { components: { Field: `${CLIENT}#FindingSummary` }, disableListColumn: true },
+        admin: { components: { Field: `${CLIENT}#FindingSummary` }, disabled: { column: true } },
       },
       {
         name: 'status',

@@ -1,6 +1,6 @@
 import { multiTenantPlugin } from '@payloadcms/plugin-multi-tenant'
 import type { CollectionConfig, Payload, PayloadRequest } from 'payload'
-import { createLocalReq } from 'payload'
+import { createPayloadRequest } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 
 import { janitor } from '@/index.js'
@@ -48,7 +48,7 @@ let editor: User
 let manager: User
 let loner: User
 
-const as = (user: User): Promise<PayloadRequest> => createLocalReq({ user: user as never }, payload)
+const as = (user: User): Promise<PayloadRequest> => createPayloadRequest({ payload, user: user as never })
 
 const post = async (path: string, user: User): Promise<Response> =>
   payload.config.endpoints.find((item) => item.path === path)!.handler(await as(user))

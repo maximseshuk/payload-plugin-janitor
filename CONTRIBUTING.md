@@ -10,7 +10,7 @@ Thanks for helping with the Janitor plugin for Payload. This guide covers the se
 
 ## Setup
 
-You need Node.js 22+ and pnpm 12.
+You need Node.js 24.15+ and pnpm 12.
 
 ```bash
 pnpm install

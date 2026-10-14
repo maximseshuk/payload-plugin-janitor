@@ -18,10 +18,10 @@ const mark = (id: string): (() => void) => {
     'position:fixed',
     'pointer-events:none',
     'z-index:100',
-    `border-radius:${token('--style-radius-m')}`,
-    `outline:1px solid ${token('--theme-warning-300')}`,
+    `border-radius:${token('--radius-medium')}`,
+    `outline:1px solid ${token('--color-border-warning')}`,
     'outline-offset:6px',
-    `box-shadow:0 0 0 6px ${token('--theme-warning-50')}`,
+    `box-shadow:0 0 0 6px ${token('--color-bg-warning-tertiary')}`,
   ].join(';')
   document.body.append(ring)
 

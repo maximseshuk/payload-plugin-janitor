@@ -1,9 +1,15 @@
+import { existsSync } from 'node:fs'
+import { mkdtemp, readdir, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
 import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
 import type { Adapter } from '@payloadcms/plugin-cloud-storage/types'
-import { getFileKey } from '@payloadcms/plugin-cloud-storage/utilities'
+import { sharpTransformer } from '@payloadcms/transformer-sharp'
 import type { CollectionConfig, GlobalConfig, Payload } from 'payload'
 import { afterAll, beforeAll, beforeEach, describe, expect, it, onTestFinished, vi } from 'vitest'
 
+import { localAdapter } from '@/adapters/local.js'
 import { janitor } from '@/index.js'
 import { purgeApproved } from '@/server/purge.js'
 import { runJanitor } from '@/server/run.js'
@@ -67,12 +73,19 @@ const own = memoryAdapter(shared.objects)
 
 const upload = { disableLocalStorage: true }
 
+const thumb = { name: 'thumb', height: 10, width: 10 }
+
+const png = Buffer.from(
+  'iVBORw0KGgoAAAANSUhEUgAAABQAAAAUCAIAAAAC64paAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAAJklEQVQ4jWNooAAwjGomDTCQqB4FjGomETCQqgEZjGomEQxcgAEACI5YH1MPkqcAAAAASUVORK5CYII=',
+  'base64',
+)
+
 const collections: CollectionConfig[] = [
   { slug: 'users', auth: true, fields: [] },
   {
     slug: 'photos',
     fields: [{ name: 'alt', type: 'text' }],
-    upload: { ...upload, imageSizes: [{ name: 'thumb', height: 10, width: 10 }] },
+    upload,
   },
   {
     slug: 'docs',
@@ -84,12 +97,7 @@ const collections: CollectionConfig[] = [
   },
   { slug: 'assets', fields: [{ name: 'title', type: 'text' }], trash: true, upload },
   { slug: 'avatars', fields: [{ name: 'prefix', type: 'text', defaultValue: 'avatars' }], upload },
-  {
-    slug: 'sheets',
-    fields: [{ name: 'title', type: 'text' }],
-    upload: { ...upload, imageSizes: [{ name: 'thumb', height: 10, width: 10 }] },
-    versions: { drafts: true },
-  },
+  { slug: 'sheets', fields: [{ name: 'title', type: 'text' }], upload, versions: { drafts: true } },
   { slug: 'tags', fields: [{ name: 'name', type: 'text' }] },
   {
     slug: 'codes',
@@ -162,7 +170,7 @@ const create = async (collection: string, data: Record<string, unknown>): Promis
 
 const fileOf = (name: string) => ({ data: Buffer.from(name), mimetype: 'text/plain', name, size: name.length })
 
-const thumbOf = (name: string) => ({ thumb: { filename: `${name}-10x10.txt` } })
+const imageOf = (name: string) => ({ data: png, mimetype: 'image/png', name, size: png.length })
 
 const file = async (collection: string, name: string, data: Record<string, unknown> = {}): Promise<Doc> =>
   (await payload.create({
@@ -224,6 +232,11 @@ beforeAll(async () => {
         storage: shared,
       }),
     ],
+    upload: {
+      transformers: [
+        sharpTransformer({ collections: { photos: { variants: [thumb] }, sheets: { variants: [thumb] } } }),
+      ],
+    },
   }))
 
   options = (payload.config.custom as Record<string, ResolvedOptions>)[PLUGIN_NAME]!
@@ -306,7 +319,7 @@ describe(`scan of ordinary collections on ${label}`, () => {
     await scanStorage(payload, options)
 
     expect(await findingOf('tags', `tags/${tag.id}`)).toBeDefined()
-    expect(await findingOf('photos', 'young.txt')).toMatchObject({ documentId: String(photo.id), kind: 'missing' })
+    expect(await findingOf('photos', photo.filename)).toMatchObject({ documentId: String(photo.id), kind: 'missing' })
   })
 
   it('records when the document of a missing file was created', async () => {
@@ -314,7 +327,7 @@ describe(`scan of ordinary collections on ${label}`, () => {
 
     await scanStorage(payload, options)
 
-    const finding = (await findingOf('photos', 'vanished.txt')) as Finding & { uploadedAt?: string }
+    const finding = (await findingOf('photos', photo.filename)) as Finding & { uploadedAt?: string }
 
     expect(finding.kind).toBe('missing')
     expect(new Date(finding.uploadedAt ?? 0).getTime()).toBe(new Date(photo.createdAt).getTime())
@@ -421,9 +434,10 @@ describe(`scan of ordinary collections on ${label}`, () => {
 
 describe(`scan of upload collections on ${label}`, () => {
   it('writes only orphans when the report asks for orphans', async () => {
-    await file('photos', 'loose.txt')
+    const loose = await file('photos', 'loose.txt')
+
     await file('photos', 'gone.txt')
-    shared.put('loose.txt')
+    shared.put(loose.filename)
     shared.put('stray.txt')
 
     const report = await scanStorage(payload, withChecks({ photos: ['orphans'] }))
@@ -432,12 +446,31 @@ describe(`scan of upload collections on ${label}`, () => {
     expect((await findings()).map((item) => [item.kind, item.objectKey])).toEqual([['orphan', 'stray.txt']])
   })
 
-  it('knows image size files, and purge refuses to delete one', async () => {
+  it('finds nothing for an image and the variants sharp made of it', async () => {
+    const photo = (await payload.create({
+      collection: 'photos' as never,
+      data: {} as never,
+      file: imageOf('pic.png'),
+      overrideAccess: true,
+    })) as unknown as Doc & { filename: string; variants: { thumb: { filename: string } } }
+
+    expect(photo.variants.thumb.filename).toBe('pic-original-10x10.png')
+
+    shared.put(photo.filename)
+    shared.put(photo.variants.thumb.filename)
+
+    const report = await scanStorage(payload, withChecks({ photos: ['orphans', 'missing'] }))
+
+    expect([report.orphans, report.missing]).toEqual([0, 0])
+    expect(await findings()).toEqual([])
+  })
+
+  it('knows variant files, and purge refuses to delete one', async () => {
     const photo = await file('photos', 'big.txt')
 
     await payload.update({
       collection: 'photos' as never,
-      data: { sizes: { thumb: { filename: 'big-10x10.txt' } } } as never,
+      data: { variants: { thumb: { filename: 'big-10x10.txt' } } } as never,
       id: photo.id,
       overrideAccess: true,
     })
@@ -458,7 +491,7 @@ describe(`scan of upload collections on ${label}`, () => {
 
     await payload.update({
       collection: 'photos' as never,
-      data: { sizes: { thumb: { filename: 'late-10x10.txt' } } } as never,
+      data: { variants: { thumb: { filename: 'late-10x10.txt' } } } as never,
       id: late.id,
       overrideAccess: true,
     })
@@ -471,11 +504,14 @@ describe(`scan of upload collections on ${label}`, () => {
   })
 
   it('does not read one collection as the orphans of another on a shared scope', async () => {
-    await file('photos', 'same.txt')
+    const same = await file('photos', 'same.txt')
+
     await file('docs', 'same.txt')
-    await file('docs', 'manual.txt')
-    shared.put('same.txt')
-    shared.put('manual.txt')
+
+    const manual = await file('docs', 'manual.txt')
+
+    shared.put(same.filename)
+    shared.put(manual.filename)
     shared.put('stray.txt')
 
     const report = await scanStorage(payload, options)
@@ -486,9 +522,9 @@ describe(`scan of upload collections on ${label}`, () => {
     const unused = (await findings()).filter((item) => item.kind === 'unused')
 
     expect(unused.map((item) => `${item.collectionSlug}:${item.objectKey}`).toSorted()).toEqual([
-      'docs:manual.txt',
-      'docs:same.txt',
-      'photos:same.txt',
+      `docs:${manual.filename}`,
+      `docs:${same.filename}`,
+      `photos:${same.filename}`,
     ])
 
     await scanStorage(payload, options)
@@ -540,8 +576,9 @@ describe(`full keys on a shared bucket on ${label}`, () => {
       .map((item) => `${item.collectionSlug}:${item.objectKey}`)
 
   it('knows the files of another adapter object on the same bucket by their full key', async () => {
-    await file('assets', 'kept.txt')
-    shared.put('assets/kept.txt')
+    const kept = await file('assets', 'kept.txt')
+
+    shared.put(`assets/${kept.filename}`)
     shared.put('assets/stray.txt')
 
     await scanStorage(payload, options)
@@ -550,28 +587,29 @@ describe(`full keys on a shared bucket on ${label}`, () => {
   })
 
   it('knows the files of an unlisted upload collection, under its own or a per-document prefix', async () => {
-    await file('avatars', 'face.txt')
-    await file('avatars', 'old.txt', { prefix: '/legacy/' })
-    shared.put('avatars/face.txt')
-    shared.put('legacy/old.txt')
-    shared.put('face.txt')
+    const face = await file('avatars', 'face.txt')
+    const old = await file('avatars', 'old.txt', { prefix: '/legacy/' })
+
+    shared.put(`avatars/${face.filename}`)
+    shared.put(`legacy/${old.filename}`)
+    shared.put(face.filename)
 
     await scanStorage(payload, options)
 
-    expect(await orphans()).toEqual(['photos:face.txt'])
+    expect(await orphans()).toEqual([`photos:${face.filename}`])
   })
 
   it('keeps an approved orphan once another collection holds its full key', async () => {
-    shared.put('assets/late.txt')
+    shared.put('assets/late-original.txt')
     await scanStorage(payload, options)
-    await approve((await findingOf('photos', 'assets/late.txt'))!)
+    await approve((await findingOf('photos', 'assets/late-original.txt'))!)
     await file('assets', 'late.txt')
 
     const report = await purgeApproved(payload, options)
 
     expect(report.deleted).toBe(0)
-    expect(shared.objects.has('assets/late.txt')).toBe(true)
-    expect((await findingOf('photos', 'assets/late.txt'))?.status).toBe('keep')
+    expect(shared.objects.has('assets/late-original.txt')).toBe(true)
+    expect((await findingOf('photos', 'assets/late-original.txt'))?.status).toBe('keep')
   })
 
   it('keeps an approved orphan whose key lies outside the collection prefix', async () => {
@@ -623,13 +661,13 @@ describe(`full keys on a shared bucket on ${label}`, () => {
     await file('photos', 'twin.txt')
     const twin = await file('docs', 'twin.txt')
 
-    shared.put('twin.txt')
+    shared.put(twin.filename)
     await scanStorage(payload, options)
-    await approve((await findingOf('docs', 'twin.txt'))!)
+    await approve((await findingOf('docs', twin.filename))!)
 
     const report = await purgeApproved(payload, options)
 
-    expect(report.skipped).toEqual([{ key: 'twin.txt', reason: 'another document holds the same file' }])
+    expect(report.skipped).toEqual([{ key: twin.filename, reason: 'another document holds the same file' }])
     expect(await reread('docs', twin.id)).toBeDefined()
   })
 
@@ -646,13 +684,13 @@ describe(`draft uploads on ${label}`, () => {
   it('knows a file uploaded as a draft over a published document', async () => {
     const sheet = await file('sheets', 'live.txt', { _status: 'published' })
 
-    await draftFile('sheets', sheet.id, 'draft.txt')
-    shared.put('live.txt')
-    shared.put('draft.txt')
+    const draft = (await draftFile('sheets', sheet.id, 'draft.txt')) as unknown as Doc
 
-    expect((await reread('sheets', sheet.id)) as unknown as { filename: string }).toMatchObject({
-      filename: 'live.txt',
-    })
+    shared.put(sheet.filename)
+    shared.put(draft.filename)
+
+    expect(draft.filename).not.toBe(sheet.filename)
+    expect(await reread('sheets', sheet.id)).toMatchObject({ filename: sheet.filename })
 
     await scanStorage(payload, options)
 
@@ -662,78 +700,91 @@ describe(`draft uploads on ${label}`, () => {
   it('keeps an approved orphan once a draft holds it', async () => {
     const sheet = await file('sheets', 'live.txt', { _status: 'published' })
 
-    shared.put('live.txt')
-    shared.put('later.txt')
+    shared.put(sheet.filename)
+    shared.put('later-original.txt')
     await scanStorage(payload, options)
-    await approve((await findingOf('photos', 'later.txt'))!)
+    await approve((await findingOf('photos', 'later-original.txt'))!)
     await draftFile('sheets', sheet.id, 'later.txt')
 
     const report = await purgeApproved(payload, options)
 
     expect(report.deleted).toBe(0)
-    expect(shared.objects.has('later.txt')).toBe(true)
+    expect(shared.objects.has('later-original.txt')).toBe(true)
   })
 
-  it('finds nothing for the image sizes of draft images', async () => {
+  it('finds nothing for the variants sharp made of draft images', async () => {
     await payload.create({
       collection: 'sheets' as never,
-      data: { sizes: thumbOf('draft-only') } as never,
+      data: {} as never,
       draft: true,
-      file: fileOf('draft-only.txt'),
+      file: imageOf('draft-only.png'),
       overrideAccess: true,
     })
 
-    const sheet = await file('sheets', 'live.txt', { _status: 'published', sizes: thumbOf('live') })
+    const sheet = await payload.create({
+      collection: 'sheets' as never,
+      data: { _status: 'published' } as never,
+      file: imageOf('live.png'),
+      overrideAccess: true,
+    })
 
     await payload.update({
       collection: 'sheets' as never,
-      data: { sizes: thumbOf('later') } as never,
+      data: {} as never,
       draft: true,
-      file: fileOf('later.txt'),
+      file: imageOf('later.png'),
       id: sheet.id,
       overrideAccess: true,
     })
 
-    const names = ['draft-only', 'live', 'later'].flatMap((name) => [`${name}.txt`, `${name}-10x10.txt`])
+    const names = ['draft-only', 'live', 'later'].flatMap((name) => [
+      `${name}-original.png`,
+      `${name}-original-10x10.png`,
+    ])
 
     for (const name of names) shared.put(name)
-    shared.put('stray-10x10.txt')
+    shared.put('stray-10x10.png')
 
     await scanStorage(payload, options)
 
     expect((await findings()).filter((item) => item.kind === 'orphan').map((item) => item.objectKey)).toEqual([
-      'stray-10x10.txt',
+      'stray-10x10.png',
     ])
   })
 
-  it('keeps an approved orphan image size once only a draft holds it', async () => {
-    const sheet = await file('sheets', 'live.txt', { _status: 'published', sizes: thumbOf('live') })
+  it('keeps an approved orphan variant once only a draft holds it', async () => {
+    const sheet = (await payload.create({
+      collection: 'sheets' as never,
+      data: { _status: 'published' } as never,
+      file: imageOf('live.png'),
+      overrideAccess: true,
+    })) as unknown as Doc & { variants: { thumb: { filename: string } } }
 
-    shared.put('live.txt')
-    shared.put('live-10x10.txt')
-    shared.put('late-10x10.txt')
+    shared.put(sheet.filename)
+    shared.put(sheet.variants.thumb.filename)
+    shared.put('late-original-10x10.png')
     await scanStorage(payload, options)
 
-    const orphan = (await findings()).find((item) => item.objectKey === 'late-10x10.txt')!
+    const orphan = (await findings()).find((item) => item.objectKey === 'late-original-10x10.png')!
 
     expect(orphan.kind).toBe('orphan')
 
     await approve(orphan)
     await payload.update({
       collection: 'sheets' as never,
-      data: { sizes: thumbOf('late') } as never,
+      data: {} as never,
       draft: true,
-      file: fileOf('late.txt'),
+      file: imageOf('late.png'),
       id: sheet.id,
       overrideAccess: true,
     })
 
-    expect(await reread('sheets', sheet.id)).toMatchObject({ filename: 'live.txt' })
+    expect(await reread('sheets', sheet.id)).toMatchObject({ filename: sheet.filename })
 
     const report = await purgeApproved(payload, options)
 
     expect(report.deleted).toBe(0)
-    expect(shared.objects.has('late-10x10.txt')).toBe(true)
+    expect(shared.objects.has('late-original-10x10.png')).toBe(true)
   })
 })
 
@@ -742,21 +793,23 @@ describe(`rescans and approvals on ${label}`, () => {
     const first = await file('photos', 'reuse.txt')
 
     await file('photos', 'keeps-ids-apart.txt')
-    shared.put('reuse.txt')
+    shared.put(first.filename)
     await scanStorage(payload, options)
     await payload.update({
       collection: options.findingsSlug as never,
       data: { note: 'checked by hand', status: 'delete' } as never,
-      id: (await findingOf('photos', 'reuse.txt'))!.id,
+      id: (await findingOf('photos', first.filename))!.id,
       overrideAccess: true,
     })
     await payload.delete({ collection: 'photos' as never, id: first.id, overrideAccess: true })
 
     const second = await file('photos', 'reuse.txt')
 
+    expect(second.filename).toBe(first.filename)
+
     await scanStorage(payload, options)
 
-    expect(await noteOf('photos', 'reuse.txt')).toMatchObject({
+    expect(await noteOf('photos', first.filename)).toMatchObject({
       documentId: String(second.id),
       note: 'checked by hand',
       status: 'found',
@@ -783,12 +836,12 @@ describe(`rescans and approvals on ${label}`, () => {
     const photo = await file('photos', 'absent.txt')
 
     await scanStorage(payload, options)
-    await approve((await findingOf('photos', 'absent.txt'))!)
+    await approve((await findingOf('photos', photo.filename))!)
 
     const report = await purgeApproved(payload, options)
 
-    expect(report.skipped).toEqual([{ key: 'absent.txt', reason: 'a missing file has nothing to delete' }])
-    expect((await findingOf('photos', 'absent.txt'))?.status).toBe('keep')
+    expect(report.skipped).toEqual([{ key: photo.filename, reason: 'a missing file has nothing to delete' }])
+    expect((await findingOf('photos', photo.filename))?.status).toBe('keep')
     expect(await reread('photos', photo.id)).toBeDefined()
   })
 
@@ -832,10 +885,11 @@ describe(`rescans and approvals on ${label}`, () => {
   })
 
   it('frees no bytes when purge moves an upload to the trash', async () => {
-    await file('assets', 'bin.txt')
-    shared.put('assets/bin.txt')
+    const bin = await file('assets', 'bin.txt')
+
+    shared.put(`assets/${bin.filename}`)
     await scanStorage(payload, options)
-    await approve((await findingOf('assets', 'assets/bin.txt'))!)
+    await approve((await findingOf('assets', `assets/${bin.filename}`))!)
 
     const report = await purgeApproved(payload, options)
 
@@ -1262,23 +1316,19 @@ describe(`storage kept apart per collection on ${label}`, () => {
 describe(`storage plugin with composite prefixes and object keys on ${label}`, () => {
   const bucket = memoryAdapter()
 
-  type Stored = { _objectKey?: null | string; prefix?: null | string }
-
-  const keyFor = (prefix: string | undefined, doc: Stored, filename: string): string =>
-    getFileKey({
-      collectionPrefix: prefix,
-      docPrefix: [doc.prefix, doc._objectKey].filter(Boolean).join('/'),
-      filename,
-      useCompositePrefixes: true,
-    }).fileKey
-
-  const memoryStorage: Adapter = ({ prefix }) => ({
+  const memoryStorage: Adapter = () => ({
     name: 'memory',
-    handleDelete: ({ doc, filename, storageFilePath }) => {
-      bucket.objects.delete(storageFilePath ?? keyFor(prefix, doc as Stored, filename))
+    handleDelete: ({ storageFilePath }) => {
+      bucket.objects.delete(storageFilePath)
     },
-    handleUpload: ({ data, file: incoming, storageFilePath }) => {
-      bucket.put(storageFilePath ?? keyFor(prefix, data as Stored, incoming.filename))
+    copyFile: async ({ to }) => {
+      bucket.put(to)
+    },
+    deleteFile: ({ storageFilePath }) => {
+      bucket.objects.delete(storageFilePath)
+    },
+    handleUpload: ({ storageFilePath }) => {
+      bucket.put(storageFilePath)
     },
     staticHandler: () => new Response(null, { status: 404 }),
   })
@@ -1294,7 +1344,7 @@ describe(`storage plugin with composite prefixes and object keys on ${label}`, (
         {
           slug: 'media',
           fields: [{ name: '_objectKey', type: 'text' }],
-          upload: { imageSizes: [{ name: 'thumb', height: 10, width: 10 }] },
+          upload: true,
         },
         { slug: 'notes', fields: [{ name: 'media', type: 'relationship', relationTo: 'media' }] },
       ],
@@ -1309,6 +1359,7 @@ describe(`storage plugin with composite prefixes and object keys on ${label}`, (
           storage: bucket,
         }),
       ],
+      upload: { transformers: [sharpTransformer({ collections: { media: { variants: [thumb] } } })] },
     }))
 
     appOptions = (app.config.custom as Record<string, ResolvedOptions>)[PLUGIN_NAME]!
@@ -1318,42 +1369,49 @@ describe(`storage plugin with composite prefixes and object keys on ${label}`, (
     await stop()
   })
 
-  const uploadMedia = async (name: string, data: Record<string, unknown> = {}): Promise<Doc> =>
+  type Media = Doc & { _objectKey: string }
+
+  const uploadMedia = async (name: string, data: Record<string, unknown> = {}): Promise<Media> =>
     (await app.create({
       collection: 'media' as never,
       data: data as never,
       file: fileOf(name),
       overrideAccess: true,
       showHiddenFields: true,
-    })) as unknown as Doc
+    })) as unknown as Media
+
+  const keyOf = (doc: Media, prefix = 'media') => `${prefix}/${doc._objectKey}/${doc.filename}`
 
   it('reads keys the storage plugin wrote, and purge deletes only what was approved', async () => {
     const held = await uploadMedia('a.txt', { prefix: 'user-1' })
+    const variant = keyOf({ ...held, filename: 'a-10x10.txt' }, 'media/user-1')
 
     await app.update({
       collection: 'media' as never,
-      data: { sizes: { thumb: { filename: 'a-10x10.txt' } } } as never,
+      data: { variants: { thumb: { filename: 'a-10x10.txt' } } } as never,
       id: held.id,
       overrideAccess: true,
     })
-    bucket.put('media/user-1/a-10x10.txt')
+    bucket.put(variant)
 
-    const loose = await uploadMedia('b.txt', { _objectKey: 'k1' })
+    const loose = await uploadMedia('b.txt')
     const plain = await uploadMedia('c.txt')
 
     await app.create({ collection: 'notes' as never, data: { media: held.id } as never, overrideAccess: true })
     await app.create({ collection: 'notes' as never, data: { media: plain.id } as never, overrideAccess: true })
-    bucket.put('media/b.txt')
+    bucket.put(`media/${loose.filename}`)
     bucket.put('media/user-1/stray.txt')
 
-    expect([...bucket.objects.keys()].toSorted()).toEqual([
-      'media/b.txt',
-      'media/c.txt',
-      'media/k1/b.txt',
-      'media/user-1/a-10x10.txt',
-      'media/user-1/a.txt',
-      'media/user-1/stray.txt',
-    ])
+    expect([...bucket.objects.keys()].toSorted()).toEqual(
+      [
+        `media/${loose.filename}`,
+        keyOf(plain),
+        keyOf(loose),
+        variant,
+        keyOf(held, 'media/user-1'),
+        'media/user-1/stray.txt',
+      ].toSorted(),
+    )
 
     const report = await scanStorage(app, appOptions)
     const all = (
@@ -1362,9 +1420,9 @@ describe(`storage plugin with composite prefixes and object keys on ${label}`, (
 
     expect(report.missing).toBe(0)
     expect(all.map((item) => `${item.kind}:${item.objectKey}`).toSorted()).toEqual([
-      'orphan:media/b.txt',
+      `orphan:media/${loose.filename}`,
       'orphan:media/user-1/stray.txt',
-      'unused:media/k1/b.txt',
+      `unused:${keyOf(loose)}`,
     ])
 
     for (const finding of all) {
@@ -1379,11 +1437,9 @@ describe(`storage plugin with composite prefixes and object keys on ${label}`, (
     const purged = await purgeApproved(app, appOptions)
 
     expect(purged).toMatchObject({ deleted: 3, failed: [] })
-    expect([...bucket.objects.keys()].toSorted()).toEqual([
-      'media/c.txt',
-      'media/user-1/a-10x10.txt',
-      'media/user-1/a.txt',
-    ])
+    expect([...bucket.objects.keys()].toSorted()).toEqual(
+      [keyOf(plain), variant, keyOf(held, 'media/user-1')].toSorted(),
+    )
     expect(
       (await app.find({ collection: 'media' as never, pagination: false, overrideAccess: true })).docs
         .map((doc) => doc.id)
@@ -1391,21 +1447,67 @@ describe(`storage plugin with composite prefixes and object keys on ${label}`, (
     ).toEqual([held.id, plain.id].toSorted())
     expect(loose.id).toBeDefined()
   })
+
+  it.each([
+    ['its own object key', { _objectKey: 'elsewhere' }],
+    ['its own object key and the prefix of its document', { _objectKey: 'elsewhere', prefix: null }],
+    ['an object key the storage plugin rewrote', { _objectKey: 'a%2Fb' }],
+  ])('knows a variant kept under %s, and purge leaves it', async (_, own) => {
+    const doc = (await app.create({
+      collection: 'media' as never,
+      data: { prefix: 'user-2' } as never,
+      file: imageOf('p.png'),
+      overrideAccess: true,
+      showHiddenFields: true,
+    })) as unknown as Media & { variants: { thumb: Media } }
+    const variant = doc.variants.thumb
+    const key = `media/user-2/elsewhere/${variant.filename}`
+
+    await app.db.updateOne({
+      collection: 'media',
+      data: { variants: { thumb: { ...variant, ...own } } },
+      id: doc.id,
+    })
+    bucket.objects.delete(`media/user-2/${variant._objectKey}/${variant.filename}`)
+    bucket.put(key)
+    await app.create({ collection: 'notes' as never, data: { media: doc.id } as never, overrideAccess: true })
+    await scanStorage(app, appOptions)
+
+    const where = { objectKey: { equals: key } }
+
+    expect(
+      (await app.find({ collection: appOptions.findingsSlug as never, where, overrideAccess: true })).docs,
+    ).toEqual([])
+
+    await app.create({
+      collection: appOptions.findingsSlug as never,
+      data: { collectionSlug: 'media', kind: 'orphan', objectKey: key, status: 'delete' } as never,
+      overrideAccess: true,
+    })
+
+    const report = await purgeApproved(app, appOptions)
+
+    expect(report.skipped).toEqual([{ key, reason: 'the file is referenced by a document again' }])
+    expect(bucket.objects.has(key)).toBe(true)
+  })
 })
 
 describe(`storage plugin with a document prefix it rewrites on ${label}`, () => {
   const bucket = memoryAdapter()
 
-  const keyFor = (prefix: string | undefined, doc: { prefix?: null | string }, filename: string): string =>
-    getFileKey({ collectionPrefix: prefix, docPrefix: doc.prefix ?? '', filename, useCompositePrefixes: false }).fileKey
-
-  const memoryStorage: Adapter = ({ prefix }) => ({
+  const memoryStorage: Adapter = () => ({
     name: 'memory',
-    handleDelete: ({ doc, filename, storageFilePath }) => {
-      bucket.objects.delete(storageFilePath ?? keyFor(prefix, doc as { prefix?: string }, filename))
+    handleDelete: ({ storageFilePath }) => {
+      bucket.objects.delete(storageFilePath)
     },
-    handleUpload: ({ data, file: incoming, storageFilePath }) => {
-      bucket.put(storageFilePath ?? keyFor(prefix, data as { prefix?: string }, incoming.filename))
+    copyFile: async ({ to }) => {
+      bucket.put(to)
+    },
+    deleteFile: ({ storageFilePath }) => {
+      bucket.objects.delete(storageFilePath)
+    },
+    handleUpload: ({ storageFilePath }) => {
+      bucket.put(storageFilePath)
     },
     staticHandler: () => new Response(null, { status: 404 }),
   })
@@ -1446,7 +1548,7 @@ describe(`storage plugin with a document prefix it rewrites on ${label}`, () => 
 
     const [key] = [...bucket.objects.keys()]
 
-    expect([...bucket.objects.keys()]).toEqual([expect.stringMatching(/^media\/(x\/)?y\/a\.txt$/)])
+    expect([...bucket.objects.keys()]).toEqual([expect.stringMatching(/^media\/(x\/)?y\/[\w-]+\/a-original\.txt$/)])
 
     await scanStorage(app, appOptions)
 
@@ -1478,6 +1580,12 @@ describe(`storage plugin with drafts on ${label}`, () => {
     handleDelete: ({ storageFilePath }) => {
       bucket.objects.delete(storageFilePath)
     },
+    copyFile: async ({ to }) => {
+      bucket.put(to)
+    },
+    deleteFile: ({ storageFilePath }) => {
+      bucket.objects.delete(storageFilePath)
+    },
     handleUpload: ({ storageFilePath }) => {
       bucket.put(storageFilePath)
     },
@@ -1507,17 +1615,22 @@ describe(`storage plugin with drafts on ${label}`, () => {
     await stop()
   })
 
-  const save = (id: number | string | undefined, name: null | string, draft: boolean): Promise<Doc> => {
+  type Draft = Doc & { _objectKey: string }
+
+  const save = (id: number | string | undefined, name: null | string, draft: boolean): Promise<Draft> => {
     const args = {
       collection: 'drafts' as never,
       data: (draft ? {} : { _status: 'published' }) as never,
       draft,
       ...(name ? { file: fileOf(name) } : {}),
       overrideAccess: true,
+      showHiddenFields: true,
     }
 
-    return (id === undefined ? app.create(args) : app.update({ ...args, id })) as unknown as Promise<Doc>
+    return (id === undefined ? app.create(args) : app.update({ ...args, id })) as unknown as Promise<Draft>
   }
+
+  const keyOf = (doc: Draft) => `drafts/${doc._objectKey}/${doc.filename}`
 
   const scan = async (): Promise<Finding[]> => {
     await scanStorage(app, appOptions)
@@ -1528,18 +1641,18 @@ describe(`storage plugin with drafts on ${label}`, () => {
 
   it('keeps a replaced file while an old version holds it, then reports it as an orphan', async () => {
     const doc = await save(undefined, 'old.txt', false)
+    const replaced = await save(doc.id, 'new.txt', true)
 
-    await save(doc.id, 'new.txt', true)
     await save(doc.id, null, false)
 
-    expect(bucket.objects.has('drafts/old.txt')).toBe(true)
+    expect(bucket.objects.has(keyOf(doc))).toBe(true)
     expect(await scan()).toEqual([])
 
     await app.db.deleteVersions({ collection: 'drafts', where: { parent: { equals: doc.id } } })
 
     const [orphan] = await scan()
 
-    expect([orphan?.kind, orphan?.objectKey]).toEqual(['orphan', 'drafts/old.txt'])
+    expect([orphan?.kind, orphan?.objectKey]).toEqual(['orphan', keyOf(doc)])
 
     await app.update({
       collection: appOptions.findingsSlug as never,
@@ -1549,25 +1662,24 @@ describe(`storage plugin with drafts on ${label}`, () => {
     })
     await purgeApproved(app, appOptions)
 
-    expect([bucket.objects.has('drafts/old.txt'), bucket.objects.has('drafts/new.txt')]).toEqual([false, true])
+    expect([bucket.objects.has(keyOf(doc)), bucket.objects.has(keyOf(replaced))]).toEqual([false, true])
   })
 
   it('reports no missing file when an unpublished draft replaced its file', async () => {
     const doc = await save(undefined, 'first.txt', true)
+    const second = await save(doc.id, 'second.txt', true)
 
-    await save(doc.id, 'second.txt', true)
+    bucket.objects.delete(keyOf(doc))
 
-    expect(bucket.objects.has('drafts/first.txt')).toBe(false)
-    expect(
-      (await app.db.findOne<Doc & { filename: string }>({ collection: 'drafts', where: { id: { equals: doc.id } } }))
-        ?.filename,
-    ).toBe('first.txt')
+    expect((await app.db.findOne<Doc>({ collection: 'drafts', where: { id: { equals: doc.id } } }))?.filename).toBe(
+      doc.filename,
+    )
     expect((await scan()).filter((finding) => finding.kind === 'missing')).toEqual([])
 
-    bucket.objects.delete('drafts/second.txt')
+    bucket.objects.delete(keyOf(second))
 
     expect((await scan()).filter((finding) => finding.kind === 'missing').map((finding) => finding.objectKey)).toEqual([
-      'drafts/first.txt',
+      keyOf(doc),
     ])
   })
 
@@ -1577,13 +1689,100 @@ describe(`storage plugin with drafts on ${label}`, () => {
 
     await save(first.id, 'alpha-new.txt', true)
     await save(second.id, 'beta-new.txt', true)
+    bucket.objects.delete(keyOf(first))
+    bucket.objects.delete(keyOf(second))
 
     const lookups = vi.spyOn(app, 'findVersions')
 
     onTestFinished(() => lookups.mockRestore())
-    expect(
-      (await scan()).filter((finding) => ['drafts/alpha.txt', 'drafts/beta.txt'].includes(finding.objectKey)),
-    ).toEqual([])
+    expect((await scan()).filter((finding) => [keyOf(first), keyOf(second)].includes(finding.objectKey))).toEqual([])
     expect(lookups.mock.calls.filter(([args]) => JSON.stringify(args.where ?? null).includes('parent'))).toHaveLength(1)
+  })
+})
+
+describe(`local storage with converted images and versions on ${label}`, () => {
+  let app: Payload
+  let appOptions: ResolvedOptions
+  let root = ''
+  let stop = async (): Promise<void> => {}
+
+  beforeAll(async () => {
+    root = await mkdtemp(join(tmpdir(), 'janitor-'))
+    ;({ payload: app, teardown: stop } = await boot({
+      collections: [
+        { slug: 'users', auth: true, fields: [] },
+        { slug: 'pics', fields: [], upload: { staticDir: root }, versions: true },
+      ],
+      plugins: [
+        janitor({
+          collections: { pics: { report: ['orphans', 'missing'] } },
+          minAge: 0,
+          storage: localAdapter({ staticDir: root }),
+        }),
+      ],
+      upload: {
+        transformers: [
+          sharpTransformer({ collections: { pics: { formatOptions: { format: 'webp' }, variants: [thumb] } } }),
+        ],
+      },
+    }))
+
+    appOptions = (app.config.custom as Record<string, ResolvedOptions>)[PLUGIN_NAME]!
+  })
+
+  afterAll(async () => {
+    await stop()
+    await rm(root, { force: true, recursive: true })
+  })
+
+  const scan = async (): Promise<string[]> => {
+    await scanStorage(app, appOptions)
+
+    const { docs } = await app.find({
+      collection: appOptions.findingsSlug as never,
+      pagination: false,
+      where: { status: { equals: 'found' } },
+      overrideAccess: true,
+    })
+
+    return (docs as unknown as Finding[]).map((item) => `${item.kind}:${item.objectKey}`)
+  }
+
+  const save = (name: string, id?: number | string): Promise<Doc & { original: { filename: string } }> => {
+    const args = { collection: 'pics' as never, data: {} as never, file: imageOf(name), overrideAccess: true }
+
+    return (id === undefined ? app.create(args) : app.update({ ...args, id })) as never
+  }
+
+  it('knows the original a transformer kept beside the converted file, and purge keeps it', async () => {
+    const pic = await save('a.png')
+
+    expect([pic.filename, pic.original.filename]).toEqual(['a.webp', 'a-original.png'])
+    expect(await scan()).toEqual([])
+
+    await app.create({
+      collection: appOptions.findingsSlug as never,
+      data: { collectionSlug: 'pics', kind: 'orphan', objectKey: pic.original.filename, status: 'delete' } as never,
+      overrideAccess: true,
+    })
+
+    const report = await purgeApproved(app, appOptions)
+
+    expect(report.deleted).toBe(0)
+    expect(existsSync(join(root, pic.original.filename))).toBe(true)
+  })
+
+  it('knows the copies a replaced file left for the versions that hold it', async () => {
+    const pic = await save('b.png')
+
+    await save('c.png', pic.id)
+
+    expect(await readdir(root)).toEqual(
+      expect.arrayContaining([
+        expect.stringMatching(/^b-[\w-]+\.webp$/),
+        expect.stringMatching(/^b-original-[\w-]+\.png$/),
+      ]),
+    )
+    expect(await scan()).toEqual([])
   })
 })

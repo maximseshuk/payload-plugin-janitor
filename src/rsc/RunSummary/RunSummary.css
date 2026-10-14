@@ -1,45 +1,45 @@
 .janitor-summary__table {
   width: 100%;
-  border-top: 1px solid var(--theme-border-color);
+  border-top: var(--stroke-width-small) solid var(--color-border);
   border-collapse: collapse;
   table-layout: fixed;
   font-variant-numeric: tabular-nums;
 
   & th,
   & td {
-    padding: calc(var(--base) * 0.3);
-    border-right: 1px solid var(--theme-border-color);
-    color: var(--theme-text);
+    height: var(--spacer-5);
+    padding: 0 var(--spacer-2-5);
+    border-right: var(--stroke-width-small) solid var(--color-border);
+    color: var(--color-text);
+    font-size: var(--text-body-medium-font-size);
     font-weight: normal;
+    line-height: var(--text-body-medium-line-height);
     text-align: start;
     vertical-align: middle;
   }
 
-  & th:first-child,
-  & td:first-child {
-    padding-inline-start: calc(var(--base) * 0.6);
-  }
-
   & th:last-child,
   & td:last-child {
-    padding-inline-end: calc(var(--base) * 0.6);
+    padding-inline-end: var(--spacer-2);
     border-right: none;
   }
 
   & thead {
-    background: var(--theme-elevation-50);
+    background: var(--color-bg-secondary);
   }
 
   & thead th {
-    color: var(--theme-elevation-400);
+    color: var(--color-text-secondary);
   }
 
   & tbody tr {
-    border-top: 1px solid var(--theme-border-color);
+    border-top: var(--stroke-width-small) solid var(--color-border);
   }
 }
 
 .janitor-summary ~ .field-type.join .relationship-table__header h4 {
-  font: inherit;
-  letter-spacing: normal;
+  font-size: var(--text-body-medium-font-size);
+  font-weight: var(--text-body-medium-bold-font-weight);
+  line-height: var(--text-body-medium-line-height);
+  letter-spacing: var(--field-label-letter-spacing);
 }

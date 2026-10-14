@@ -18,10 +18,22 @@ describe('usage field placement', () => {
   const names = (fields: Field[]) => fields.map((field) => ('name' in field ? field.name : field.type))
 
   it('adds the panel to the sidebar of a watched collection', () => {
+    const tags = { slug: 'media', fields: [{ name: 'name', type: 'text' }] }
+    const fields = build({ collections: { media: true } }, tags)
+
+    expect(names(fields)).toEqual(['name', 'janitorUsage'])
+    expect((fields.at(-1) as UIField).admin?.position).toBe('sidebar')
+  })
+
+  it('puts the panel first on an upload collection, whose sidebar Payload 4 shows below the fields', () => {
     const fields = build({ collections: { media: true } })
 
-    expect(names(fields)).toEqual(['alt', 'janitorUsage'])
-    expect((fields.at(-1) as UIField).admin?.position).toBe('sidebar')
+    expect(names(fields)).toEqual(['janitorUsage', 'alt'])
+    expect((fields[0] as UIField).admin?.position).toBeUndefined()
+    expect(names(build({ collections: { media: { usagePanel: { position: 'sidebar' } } } }))).toEqual([
+      'alt',
+      'janitorUsage',
+    ])
   })
 
   it('puts the panel where the collection asked for it', () => {
@@ -48,6 +60,6 @@ describe('usage field placement', () => {
   })
 
   it('keeps the panel on a collection that reports nothing', () => {
-    expect(names(build({ collections: { media: { report: false } } }))).toEqual(['alt', 'janitorUsage'])
+    expect(names(build({ collections: { media: { report: false } } }))).toEqual(['janitorUsage', 'alt'])
   })
 })

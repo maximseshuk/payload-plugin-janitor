@@ -2,12 +2,14 @@
 
 import { getTranslation } from '@payloadcms/translations'
 import {
+  CircledXIcon,
   DocumentIcon,
   FieldDescription,
   fieldBaseClass,
   FieldLabel,
   Link,
   LinkIcon,
+  mergeFieldStyles,
   Pill,
   RadioGroupField,
   TextInput,
@@ -16,15 +18,13 @@ import {
   useField,
   useFormFields,
   useTranslation,
-  XIcon,
 } from '@payloadcms/ui'
-import { mergeFieldStyles } from '@payloadcms/ui/shared'
 import type {
   ClientCollectionConfig,
   DefaultCellComponentProps,
   JSONFieldClientProps,
   RadioFieldClientProps,
-  RadioFieldDescriptionClientComponent,
+  RadioFieldDescriptionClientProps,
   TextFieldClientProps,
   UIFieldClientProps,
 } from 'payload'
@@ -91,7 +91,7 @@ const previewOf = (doc: Doc | null, entity: ClientCollectionConfig | undefined):
   if (!isImage(String(doc.mimeType ?? ''))) return thumbnail
 
   return getBestFitFromSizes({
-    sizes: doc.sizes as never,
+    sizes: doc.variants as never,
     thumbnailURL: thumbnail,
     url: url ?? '',
     width: typeof doc.width === 'number' ? doc.width : undefined,
@@ -248,7 +248,7 @@ export const StatusField: React.FC<RadioFieldClientProps> = (props) => {
   return <RadioGroupField {...props} field={{ ...props.field, options }} readOnly={deleted || props.readOnly} />
 }
 
-export const StatusDescription: RadioFieldDescriptionClientComponent = ({ path }) => {
+export const StatusDescription = ({ path }: RadioFieldDescriptionClientProps) => {
   const { t } = useTranslation()
   const { value } = useFinding()
   const missing = value('kind') === 'missing'
@@ -267,7 +267,7 @@ const SUMMARY = 'janitor-summary'
 
 const SUMMARIES = {
   missing: {
-    icon: <XIcon />,
+    icon: <CircledXIcon size={24} />,
     text: `${PLUGIN_NAME}:summaryMissing`,
     title: `${PLUGIN_NAME}:brokenUpload`,
   },

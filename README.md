@@ -98,8 +98,14 @@ import { s3Adapter } from '@seshuk/payload-plugin-janitor/s3'
 import { buildConfig } from 'payload'
 
 export default buildConfig({
+  storage: [
+    s3Storage({
+      bucket: 'assets',
+      collections: { media: { prefix: 'media' } },
+      config: { region: 'eu-central-1' },
+    }),
+  ],
   plugins: [
-    s3Storage({ bucket: 'assets', collections: { media: true }, config: { region: 'eu-central-1' } }),
     janitor({
       collections: { media: true },
       storage: s3Adapter({ bucket: 'assets', config: { region: 'eu-central-1' } }),
@@ -109,9 +115,10 @@ export default buildConfig({
 ```
 
 Only the collections you list under `collections` are scanned, guarded or get a panel. `media: true` turns on
-everything the collection can have: all three checks, the usage panel in the sidebar and the delete guard.
+everything the collection can have: all three checks, the usage panel and the delete guard.
 
-List your storage plugins in `plugins` before `janitor`. See [Plugin order and prefix](#plugin-order-and-prefix).
+Storage plugins go in `storage`, as above, or in `plugins` before `janitor`. See
+[Plugin order and prefix](#plugin-order-and-prefix).
 
 The plugin adds two collections to the admin, **Janitor findings** and **Janitor runs**, in the `System` nav group.
 
@@ -154,8 +161,9 @@ A run goes like this:
 
 - **`orphans`** lists the collection's storage under its prefix. It reports every object whose full key no document
   holds.
-  - Known keys come from every upload collection in the config, listed or not. They include image size variants
-    (`sizes.*.filename`), trashed documents and draft versions.
+  - Known keys come from every upload collection in the config, listed or not. They include the original kept beside
+    a converted file (`original.filename`), image variants (`variants.*.filename`), trashed documents and draft
+    versions.
   - For a collection that is not listed, or whose prefix is unknown, keys are matched by their tail: `a/photo.jpg`
     counts as holding `media/a/photo.jpg`. This can hide an orphan, but it never reports a used file.
 - **`missing`** reports every document whose key was not in that listing.
@@ -345,14 +353,18 @@ localAdapter({ staticDir: 'media' })
 
 #### Plugin order and prefix
 
-The plugin reads the key prefix of an upload collection from the `prefix` field that the storage plugin adds. That
-field only exists once the storage plugin has run.
+The plugin reads the key prefix of an upload collection from the `prefix` field that the storage plugin adds.
 
-- **Plugin order.** List `janitor` after your storage plugins. If `janitor` comes first, startup fails (see
+- **Storage plugins in `storage`.** Payload 4 runs the adapters in `storage` after `plugins`. When `storage` is not
+  empty, `janitor` moves itself to the end of `storage` and reads the field there.
+- **Storage plugins in `plugins`.** They must come before `janitor`, or startup fails (see
   [Startup errors](#startup-errors)). Passing `prefix` on the collection also fixes this.
-- **Composite prefixes.** If the storage plugin runs with `useCompositePrefixes: true`, its `prefix` field has an
-  empty default, and the plugin cannot work out the keys from it. Pass the same prefix you gave the storage plugin
-  (`''` for none), plus `compositePrefixes: true`. Keys are then `prefix/<document folder>/<filename>`.
+- **Empty default.** Payload 4 always adds the `prefix` field. It defaults to `''` when the adapter has no prefix or
+  runs with `useCompositePrefixes: true`, and the plugin cannot work out the keys from that. For a collection that
+  reports `orphans` or `missing`:
+  - stored without a prefix, pass `prefix: ''`;
+  - with composite prefixes, pass the same prefix you gave the adapter (`''` for none), plus
+    `compositePrefixes: true`. Keys are then `prefix/<document folder>/<filename>`.
 
 A non-empty `prefix` without `compositePrefixes` on such a field stops startup, because the keys it gives would look
 exact but still be wrong.
@@ -798,7 +810,9 @@ janitor({
 ```
 
 - `position`: `'sidebar'`, `'first'`, `'last'`, `{ after: 'field' }` or `{ before: 'field' }`. Named fields are
-  found inside rows, groups, collapsibles and tabs. The default is `'sidebar'`.
+  found inside rows, groups, collapsibles and tabs. The default is `'sidebar'`, and `'first'` on an upload
+  collection. Payload 4 shows the sidebar of an upload collection below all its fields, where the panel is easy to
+  miss.
 - `limit`: how many documents the panel shows before the rest move behind a "Show all" button. The button opens a
   drawer. `0` (the default) shows 3. The drawer always shows all of them, with filters by status.
 - `overrides`: Payload field overrides for the panel's `ui` field. `name` and `type` stay as they are.
@@ -1207,9 +1221,11 @@ const bunny = {
 
 export default buildConfig({
   // ...
-  plugins: [
+  storage: [
     s3Storage({ ...images, collections: { media: { prefix: 'media' } } }),
     bunnyStorage({ collections: { documents: { prefix: 'docs' } }, storage: bunny }),
+  ],
+  plugins: [
     janitor({
       collections: {
         media: { storage: s3Adapter(images) },
@@ -1315,8 +1331,8 @@ Notes on two of these errors:
   `; give them the same prefix or separate ones`. An adapter with `perCollection` set (for example `localAdapter`
   with a `staticDir` function) keeps every collection apart, so it never causes this error.
 - **Empty-default `prefix`**. It comes up for a collection that reports `orphans` or `missing` without an explicit
-  `prefix`, when its storage plugin's `prefix` field defaults to `''`. With `useCompositePrefixes` or
-  `alwaysInsertFields`, that field no longer says where the files are.
+  `prefix`, when its storage plugin's `prefix` field defaults to `''`. With no prefix or with
+  `useCompositePrefixes`, that field does not say where the files are.
 
 #### In `onInit`
 
@@ -1326,8 +1342,8 @@ These errors stop startup in `onInit`, once the final config and the database ad
   collection needs usage detection (`unused`, the panel or the guard), and the database is something else.
   `blockDelete` and `usagePanel` are on by default, so this covers almost every setup.
 - `janitor: "x" stores files under "media" but janitor read "" before its storage plugin ran`. `janitor` was listed
-  before the storage plugin that adds the `prefix` field. Move it after the storage plugins in `plugins`, or pass
-  `prefix` on the collection.
+  before a storage plugin in `plugins` that adds the `prefix` field. Move it after that plugin, or pass `prefix` on
+  the collection.
 - The three `prefix` field errors above (the two empty-default ones and the `compositePrefixes` one). The storage
   plugin added that field after `janitor` ran.
 - ``janitor: `tenants` is on, but no listed collection has a `tenant` relationship to "tenants"``. No listed
@@ -1360,7 +1376,7 @@ The plugin only knows what the database and storage tell it. It cannot see:
 - An id that is the whole value of a `json` field, such as `12` or `"abc"`. On Postgres and SQLite, only ids inside
   a JSON object or array are read, for the same reason.
 - Files other plugins write next to the uploads, such as blurhash images or video thumbnails, that no upload
-  document names in `filename` or `sizes`. They are reported as orphans.
+  document names in `filename`, `original` or `variants`. They are reported as orphans.
 - A table of your own with a foreign key to a listed collection counts. But the panel lists it by table name and
   column, without a link or a title.
 - Databases other than Postgres, SQLite and MongoDB. With them, startup fails as soon as any collection needs usage
@@ -1418,11 +1434,14 @@ How the document folder combines with the collection prefix:
 - Without `compositePrefixes`, a non-empty document folder replaces the collection prefix.
 - With `compositePrefixes`, the key is `prefix/<document prefix>/<_objectKey>/<filename>`.
 
-Image sizes follow the same rule.
+The original and each image variant follow the same rule. Each file can carry its own `prefix` and `_objectKey`. The
+plugin then knows the file under its own folder, under the document folder, and under its own `_objectKey` inside
+the document prefix.
 
-Storage plugins rewrite some document prefix and `_objectKey` values before use: values with a control character,
-`%`, `\`, a leading `/`, or a `.` or `..` segment. Storage plugin versions clean such values in different ways, so
-no single key can be trusted. The plugin then treats the document's key as unknown:
+Storage plugins rewrite some `prefix` and `_objectKey` values of a document or of one of its files before use:
+values with a control character, `%`, `\`, a leading `/`, or a `.` or `..` segment. Storage plugin versions clean
+such values in different ways, so no single key can be trusted. The plugin then treats the document's key as
+unknown:
 
 - It matches the document's files by file name alone, as for a collection that is not listed.
 - It writes no `missing` finding for it.

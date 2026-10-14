@@ -39,13 +39,18 @@ export const REFERENCED = (Object.keys(FIXTURES) as Fixture[]).filter((fixture) 
 
 export type Seeded = {
   fileIds: Record<FileFixture, number | string>
+  filenames: Record<Fixture | FileFixture, string>
   ids: Record<Fixture, number | string>
   unusedFilename: string
 }
 
-export const filenameOf = (fixture: Fixture | FileFixture): string => `${fixture}.txt`
+const filenameOf = (fixture: Fixture | FileFixture): string => `${fixture}.txt`
 
-const upload = async (payload: Payload, filename: string, collection = 'media'): Promise<number | string> => {
+const upload = async (
+  payload: Payload,
+  filename: string,
+  collection = 'media',
+): Promise<{ filename: string; id: number | string }> => {
   const doc = await payload.create({
     collection: collection as 'media',
     data: { alt: filename },
@@ -53,7 +58,7 @@ const upload = async (payload: Payload, filename: string, collection = 'media'):
     overrideAccess: true,
   })
 
-  return doc.id
+  return { filename: doc.filename!, id: doc.id }
 }
 
 const richTextWith = (id: number | string) => ({
@@ -103,15 +108,16 @@ export const clear = async (payload: Payload, options: ResolvedOptions): Promise
 
 export const seed = async (payload: Payload): Promise<Seeded> => {
   const ids = {} as Record<Fixture, number | string>
+  const filenames = {} as Record<Fixture | FileFixture, string>
 
   for (const fixture of Object.keys(FIXTURES) as Fixture[]) {
-    ids[fixture] = await upload(payload, filenameOf(fixture))
+    ;({ filename: filenames[fixture], id: ids[fixture] } = await upload(payload, filenameOf(fixture)))
   }
 
   const fileIds = {} as Record<FileFixture, number | string>
 
   for (const fixture of Object.keys(FILES) as FileFixture[]) {
-    fileIds[fixture] = await upload(payload, filenameOf(fixture), 'files')
+    ;({ filename: filenames[fixture], id: fileIds[fixture] } = await upload(payload, filenameOf(fixture), 'files'))
   }
 
   await payload.update({
@@ -218,5 +224,5 @@ export const seed = async (payload: Payload): Promise<Seeded> => {
     overrideAccess: true,
   })
 
-  return { fileIds, ids, unusedFilename: filenameOf('unused') }
+  return { fileIds, filenames, ids, unusedFilename: filenames.unused }
 }

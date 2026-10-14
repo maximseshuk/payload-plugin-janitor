@@ -1,5 +1,7 @@
+import { sqliteAdapter } from '@payloadcms/db-sqlite'
 import { cloudStoragePlugin } from '@payloadcms/plugin-cloud-storage'
 import type { Config, Payload } from 'payload'
+import { buildConfig } from 'payload'
 import { describe, expect, it } from 'vitest'
 
 import { janitor } from '@/index.js'
@@ -81,6 +83,8 @@ describe('plugin order', () => {
         shots: {
           adapter: () => ({
             name: 'test',
+            copyFile: async () => {},
+            deleteFile: () => {},
             handleDelete: () => {},
             handleUpload: () => {},
             staticHandler: () => new Response(null),
@@ -109,6 +113,19 @@ describe('plugin order', () => {
     const built = await janitor({ collections: { shots: true }, storage: store() })(await cloud(false)(base))
 
     expect(() => check(built)).not.toThrow()
+    expect((built.custom as Record<string, ResolvedOptions>)[PLUGIN_NAME]!.collections[0]!.prefix).toBe('shots')
+  })
+
+  it('reads the prefix of a storage adapter under `storage`, which Payload runs after the plugins', async () => {
+    const built = await buildConfig({
+      ...base,
+      db: sqliteAdapter({ client: { url: ':memory:' } }),
+      plugins: [janitor({ collections: { shots: true }, storage: store() })],
+      secret: 'order',
+      storage: [{ name: 'test', collections: ['shots'], init: cloud(false) as (config: Config) => Config }],
+    })
+
+    expect(() => check(built as unknown as Config)).not.toThrow()
     expect((built.custom as Record<string, ResolvedOptions>)[PLUGIN_NAME]!.collections[0]!.prefix).toBe('shots')
   })
 

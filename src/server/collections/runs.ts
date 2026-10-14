@@ -67,6 +67,7 @@ export const buildRunsCollection = (options: ResolvedOptions): CollectionConfig 
       ...adminOf(options),
       useAsTitle: 'title',
     },
+    authorship: false,
     disableDuplicate: true,
     hooks: { afterChange: [titled] },
     versions: false,
@@ -85,7 +86,7 @@ export const buildRunsCollection = (options: ResolvedOptions): CollectionConfig 
       {
         name: 'summary',
         type: 'ui',
-        admin: { components: { Field: `${RSC}#RunSummary` }, disableListColumn: true },
+        admin: { components: { Field: `${RSC}#RunSummary` }, disabled: { column: true } },
       },
       {
         name: 'findings',

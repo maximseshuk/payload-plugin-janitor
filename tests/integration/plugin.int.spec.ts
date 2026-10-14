@@ -1,5 +1,5 @@
 import type { Payload, PayloadRequest, Where } from 'payload'
-import { createLocalReq, getPayload } from 'payload'
+import { createPayloadRequest, getPayload } from 'payload'
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 
 import { breakdownOf } from '@/rsc/RunSummary/RunSummary.utils.js'
@@ -12,7 +12,7 @@ import type { ResolvedOptions } from '@/shared/types/resolved.js'
 
 import config, { storage } from '../payload.config.js'
 import type { Fixture, Seeded } from '../seed.js'
-import { clear, FILES, filenameOf, FIXTURES, REFERENCED, seed } from '../seed.js'
+import { clear, FILES, FIXTURES, REFERENCED, seed } from '../seed.js'
 
 let payload: Payload
 let options: ResolvedOptions
@@ -219,8 +219,8 @@ describe(`scan on ${label}`, () => {
   })
 
   it('reports only the unreferenced upload once its object exists', async () => {
-    for (const fixture of Object.keys(FIXTURES) as Fixture[]) storage.put(`media/${filenameOf(fixture)}`)
-    for (const fixture of Object.keys(FILES)) storage.put(`files/${filenameOf(fixture as keyof typeof FILES)}`)
+    for (const fixture of Object.keys(FIXTURES) as Fixture[]) storage.put(`media/${seeded.filenames[fixture]}`)
+    for (const fixture of Object.keys(FILES)) storage.put(`files/${seeded.filenames[fixture as keyof typeof FILES]}`)
 
     const report = await scanStorage(payload, options)
 
@@ -232,7 +232,7 @@ describe(`scan on ${label}`, () => {
     const unused = await findings({ kind: { equals: 'unused' } })
     const keys = (unused.docs as unknown as { objectKey: string }[]).map((doc) => doc.objectKey).toSorted()
 
-    expect(keys).toEqual([`files/${filenameOf('spare')}`, `media/${seeded.unusedFilename}`])
+    expect(keys).toEqual([`files/${seeded.filenames.spare}`, `media/${seeded.unusedFilename}`])
   })
 
   it('breaks a run down by collection from the findings it saw last', async () => {
@@ -242,7 +242,7 @@ describe(`scan on ${label}`, () => {
       overrideAccess: true,
     })
     const report = await scanStorage(payload, options, run.id)
-    const req = await createLocalReq({ user: { collection: 'users', id: 1 } as never }, payload)
+    const req = await createPayloadRequest({ payload, user: { collection: 'users', id: 1 } as never })
     const rows = await breakdownOf(req, run.id, 'scan')
     const expected = Object.entries(report.byCollection).flatMap(([slug, stats]) => {
       const counts = Object.fromEntries(
@@ -376,10 +376,10 @@ describe(`purge on ${label}`, () => {
   })
 
   it('refuses to delete a finding whose file became used again', async () => {
-    storage.put('media/reused.txt')
+    storage.put('media/reused-original.txt')
     await scanStorage(payload, options)
 
-    const orphan = (await findings({ objectKey: { equals: 'media/reused.txt' } })).docs[0]!
+    const orphan = (await findings({ objectKey: { equals: 'media/reused-original.txt' } })).docs[0]!
 
     await payload.update({
       collection: options.findingsSlug as 'media',
@@ -399,7 +399,7 @@ describe(`purge on ${label}`, () => {
 
     expect(report.deleted).toBe(0)
     expect(report.skipped).toHaveLength(1)
-    expect(storage.objects.has('media/reused.txt')).toBe(true)
+    expect(storage.objects.has('media/reused-original.txt')).toBe(true)
   })
 })
 
@@ -602,7 +602,7 @@ describe(`trash on ${label}`, () => {
     })
 
     expect((spare as unknown as { deletedAt?: string }).deletedAt).toBeTruthy()
-    expect(storage.objects.has(`files/${filenameOf('spare')}`)).toBe(true)
+    expect(storage.objects.has(`files/${seeded.filenames.spare}`)).toBe(true)
   })
 
   it('does not report a trashed upload again', async () => {

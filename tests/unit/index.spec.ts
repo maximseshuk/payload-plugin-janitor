@@ -1,4 +1,5 @@
 import type { CollectionConfig, Config, Field } from 'payload'
+import { isFieldDisabled } from 'payload/shared'
 import { describe, expect, it } from 'vitest'
 
 import { janitor } from '@/index.js'
@@ -194,12 +195,9 @@ describe('factory', () => {
       ) as { admin?: Record<string, unknown> }
 
     for (const field of [fieldOf('janitor-findings', 'ref'), fieldOf('janitor-runs', 'title')]) {
-      expect(field.admin).toEqual({
-        disableGroupBy: true,
-        disableListColumn: true,
-        disableListFilter: true,
-        hidden: true,
-      })
+      expect(field.admin?.hidden).toBe(true)
+      for (const area of ['column', 'filter', 'groupBy'] as const) expect(isFieldDisabled(field, area)).toBe(true)
+      expect(isFieldDisabled(field, 'field')).toBe(false)
     }
   })
 

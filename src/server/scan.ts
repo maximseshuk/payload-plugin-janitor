@@ -8,11 +8,15 @@ import type { ScanReport, UsageRef } from '@/shared/types/index.js'
 import type { ResolvedCollection, ResolvedOptions } from '@/shared/types/resolved.js'
 import type { StorageAdapter } from '@/shared/types/storage.js'
 
-type Stored = {
+type StoredFile = {
   _objectKey?: null | string
   filename?: null | string
   prefix?: null | string
-  sizes?: null | Record<string, null | { filename?: null | string }>
+}
+
+export type Stored = StoredFile & {
+  original?: null | StoredFile
+  variants?: null | Record<string, null | StoredFile>
 }
 
 type ScannedDoc = Stored & {
@@ -31,8 +35,9 @@ export type Layout = Pick<ResolvedCollection, 'composite' | 'prefix'>
 type Upload = Layout & {
   exact: boolean
   keyed: boolean
+  original: boolean
   prefixed: boolean
-  sizes: string[]
+  variants: string[]
   slug: string
   versions: boolean
 }
@@ -80,13 +85,13 @@ export const isOldEnough = (date: Date | null | string | undefined, minAge: numb
   return Date.now() - new Date(date).getTime() >= minAge * 1000
 }
 
-export const sizeNamesOf = (payload: Payload, slug: string): string[] => {
-  const upload = payload.collections[slug]?.config.upload as undefined | { imageSizes?: { name: string }[] }
+export const variantNamesOf = (payload: Payload, slug: string): string[] => {
+  const upload = payload.collections[slug]?.config.upload as undefined | { variants?: { name: string }[] }
 
-  return upload?.imageSizes?.map((size) => size.name) ?? []
+  return upload?.variants?.map((variant) => variant.name) ?? []
 }
 
-const folderOf = (doc: Stored, layout: Layout): string => {
+const folderOf = (doc: StoredFile, layout: Layout): string => {
   const own = joinKey(cleanPrefix(doc.prefix ?? ''), cleanPrefix(doc._objectKey ?? ''))
 
   return layout.composite ? joinKey(layout.prefix, own) : own || layout.prefix
@@ -95,19 +100,25 @@ const folderOf = (doc: Stored, layout: Layout): string => {
 export const keyOf = (doc: Stored, layout: Layout): string | undefined =>
   doc.filename ? joinKey(folderOf(doc, layout), doc.filename) : undefined
 
-export const namesOf = (doc: Stored): string[] =>
-  [doc.filename, ...Object.values(doc.sizes ?? {}).map((size) => size?.filename)].filter((name): name is string =>
-    Boolean(name),
+const filesOf = (doc: Stored): (StoredFile & { filename: string })[] =>
+  [doc, doc.original, ...Object.values(doc.variants ?? {})].filter((file): file is StoredFile & { filename: string } =>
+    Boolean(file?.filename),
   )
 
-export const keysOf = (doc: Stored, layout: Layout): string[] => {
-  const folder = folderOf(doc, layout)
+export const namesOf = (doc: Stored): string[] => filesOf(doc).map((file) => file.filename)
 
-  return namesOf(doc).map((name) => joinKey(folder, name))
-}
+export const keysOf = (doc: Stored, layout: Layout): string[] => [
+  ...new Set(
+    filesOf(doc).flatMap((file) =>
+      [file, doc, { _objectKey: file._objectKey ?? doc._objectKey, prefix: file.prefix ?? doc.prefix }].map((owner) =>
+        joinKey(folderOf(owner, layout), file.filename),
+      ),
+    ),
+  ),
+]
 
-export const isKeyUnknown = ({ _objectKey: objectKey, prefix }: Stored): boolean =>
-  isRewritten(prefix) || isRewritten(objectKey)
+export const isKeyUnknown = (doc: Stored): boolean =>
+  [doc, ...filesOf(doc)].some(({ _objectKey: objectKey, prefix }) => isRewritten(prefix) || isRewritten(objectKey))
 
 const tailsOf = (key: string): string[] => key.split('/').map((_, index, parts) => parts.slice(index).join('/'))
 
@@ -125,9 +136,10 @@ export const uploadsOf = (payload: Payload, options: ResolvedOptions): Upload[] 
         composite: target?.composite ?? false,
         exact: Boolean(target) && (target?.prefixFrom === 'option' || stored !== ''),
         keyed: hasField(collection, '_objectKey'),
+        original: hasField(collection, 'original'),
         prefix: target?.prefix ?? stored ?? '',
         prefixed: stored !== undefined,
-        sizes: sizeNamesOf(payload, collection.slug),
+        variants: variantNamesOf(payload, collection.slug),
         slug: collection.slug,
         versions: Boolean(collection.versions),
       }
@@ -135,9 +147,10 @@ export const uploadsOf = (payload: Payload, options: ResolvedOptions): Upload[] 
 
 const storedSelect = (upload: Upload): Record<string, true> => ({
   filename: true,
+  ...(upload.original ? { original: true } : {}),
   ...(upload.prefixed ? { prefix: true } : {}),
   ...(upload.keyed ? { _objectKey: true } : {}),
-  ...(upload.sizes.length ? { sizes: true } : {}),
+  ...(upload.variants.length ? { variants: true } : {}),
 })
 
 const versionSelect = (upload: Upload): Record<string, unknown> => ({ parent: true, version: storedSelect(upload) })
@@ -163,7 +176,8 @@ export const isHeld = async (
     const match = (path: string): Where => ({
       or: [
         { [`${path}filename`]: { in: names } },
-        ...upload.sizes.map((size) => ({ [`${path}sizes.${size}.filename`]: { in: names } })),
+        ...(upload.original ? [{ [`${path}original.filename`]: { in: names } }] : []),
+        ...upload.variants.map((variant) => ({ [`${path}variants.${variant}.filename`]: { in: names } })),
       ],
     })
     const own = (id: unknown): boolean => except?.collection === upload.slug && idOf(id) === except.id

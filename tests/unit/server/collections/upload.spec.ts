@@ -12,16 +12,16 @@ describe('collection configs', () => {
     const names = (collection: CollectionConfig) =>
       collection.fields.map((field) => ('name' in field ? field.name : field.type))
     const mounted = withJanitor(media, resolved)
-    const panel = mounted.fields.at(-1) as { admin: { components: { Field: { clientProps: unknown } } } }
+    const panel = mounted.fields[0] as { admin: { components: { Field: { clientProps: unknown } } } }
 
-    expect(names(mounted)).toEqual(['alt', 'janitorUsage'])
+    expect(names(mounted)).toEqual(['janitorUsage', 'alt'])
     expect(panel.admin.components.Field.clientProps).toEqual({ endpointsPath: '/janitor', limit: 4 })
     expect(names(withJanitor(media, { ...resolved, endpoints: false }))).toEqual(['alt'])
   })
 
   it('labels the usage panel without a label function', () => {
     const resolved = resolveOptions({ collections: { media: true } }, config)
-    const panel = withJanitor(media, resolved).fields.at(-1) as { label: unknown }
+    const panel = withJanitor(media, resolved).fields[0] as { label: unknown }
 
     expect(panel.label).toMatchObject({ en: 'Usage', ru: 'Использование' })
   })

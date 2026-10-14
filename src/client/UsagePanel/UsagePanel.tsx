@@ -8,11 +8,13 @@ import {
   Drawer,
   DrawerContentContainer,
   DrawerToggler,
-  ExternalLinkIcon,
   FieldLabel,
+  NewTabIcon,
   Pill,
+  RefreshIcon,
   ShimmerEffect,
   Table,
+  Tabs,
   useConfig,
   useDocumentInfo,
   useDrawerSlug,
@@ -150,9 +152,9 @@ export const UsagePanel: React.FC<Props> = ({ endpointsPath = DEFAULT_ENDPOINTS_
         <Button
           aria-label={translate(`${PLUGIN_NAME}:refresh`)}
           className={`${BASE}__refresh`}
-          buttonStyle="icon-label"
+          buttonStyle="ghost"
           disabled={state.loading}
-          icon={<RefreshIcon />}
+          icon={<RefreshIcon size={16} />}
           margin={false}
           onClick={() => void load()}
           round
@@ -163,7 +165,7 @@ export const UsagePanel: React.FC<Props> = ({ endpointsPath = DEFAULT_ENDPOINTS_
       {state.loading && !state.ready && (
         <div className={`${BASE}__loading`}>
           {[0, 1, 2].map((row) => (
-            <ShimmerEffect animationDelay={`${row * 25}ms`} height="calc(var(--base) * 1.6)" key={row} />
+            <ShimmerEffect animationDelay={`${row * 25}ms`} height="var(--spacer-5)" key={row} />
           ))}
         </div>
       )}
@@ -173,7 +175,7 @@ export const UsagePanel: React.FC<Props> = ({ endpointsPath = DEFAULT_ENDPOINTS_
       )}
 
       {!state.loading && state.error === 'failed' && (
-        <Banner type="error">
+        <Banner type="danger">
           <span className={`${BASE}__banner`}>
             {translate(`${PLUGIN_NAME}:error`)}
             <Button buttonStyle="secondary" margin={false} onClick={() => void load()}>
@@ -194,32 +196,38 @@ export const UsagePanel: React.FC<Props> = ({ endpointsPath = DEFAULT_ENDPOINTS_
           <List documents={shown} labelOf={labelOf} language={i18n.language} onHistory={openHistory} t={translate} />
 
           {documents.length > shown.length && (
-            <DrawerToggler className={`${BASE}__open`} slug={drawerSlug}>
+            <DrawerToggler buttonStyle="secondary" className={`${BASE}__open`} slug={drawerSlug}>
               {translate(`${PLUGIN_NAME}:showAll`, { count: documents.length })}
             </DrawerToggler>
           )}
 
           <Drawer
             className={`${BASE}-drawer`}
-            slug={drawerSlug}
-            title={
-              history
-                ? `${translate(`${PLUGIN_NAME}:history`)} – ${history.first.title ?? labelOf(history.first)}`
-                : translate(`${PLUGIN_NAME}:drawer`)
+            Header={
+              history && (
+                <div className="drawer__header">
+                  <Button
+                    aria-label={translate(`${PLUGIN_NAME}:drawer`)}
+                    buttonStyle="ghost"
+                    className="drawer__header__close"
+                    icon={<ChevronIcon direction="left" size={24} />}
+                    onClick={() => setHistory(undefined)}
+                  />
+                  <h2 className="drawer__header__title">
+                    {`${translate(`${PLUGIN_NAME}:history`)} – ${history.first.title ?? labelOf(history.first)}`}
+                  </h2>
+                </div>
+              )
             }
+            slug={drawerSlug}
+            title={translate(`${PLUGIN_NAME}:drawer`)}
           >
             <DrawerContentContainer className={`${BASE} ${BASE}__drawer`}>
               {history ? (
-                <HistoryView
-                  group={history}
-                  language={i18n.language}
-                  onBack={() => setHistory(undefined)}
-                  t={translate}
-                />
+                <HistoryView group={history} language={i18n.language} t={translate} />
               ) : (
                 <>
                   <Tabs
-                    label={translate(`${PLUGIN_NAME}:status`)}
                     onChange={setFilter}
                     tabs={countsOf(state.usage).map((entry) => ({
                       label: (
@@ -330,7 +338,7 @@ const DocumentLink: React.FC<{ group: Group; label: string; t: Translate }> = ({
 const Counts: React.FC<{ counts: ReturnType<typeof countsOf>; t: Translate }> = ({ counts, t }) => (
   <div className={`${BASE}__filters`}>
     {counts.map((entry) => (
-      <Pill key={entry.key} pillStyle={entry.style} size="small">
+      <Pill key={entry.key} pillStyle={entry.style} size="medium">
         {`${t(`${PLUGIN_NAME}:${entry.key}`)} ${entry.count}`}
       </Pill>
     ))}
@@ -339,7 +347,7 @@ const Counts: React.FC<{ counts: ReturnType<typeof countsOf>; t: Translate }> = 
 
 const VerdictView: React.FC<{ t: Translate; verdict: Verdict }> = ({ t, verdict }) =>
   verdict.kind === 'live' || verdict.kind === 'held' || verdict.kind === 'current' ? (
-    <Banner type={verdict.kind === 'live' ? 'error' : 'warning'}>
+    <Banner type={verdict.kind === 'live' ? 'danger' : 'warning'}>
       <span className={`${BASE}__verdict`}>
         {t(`${PLUGIN_NAME}:${verdict.kind === 'live' ? 'liveTitle' : 'heldTitle'}`)}
         <span className={`${BASE}__detail`}>
@@ -393,9 +401,9 @@ const Places: React.FC<{ onHistory: () => void; places: Place[]; t: Translate }>
       {versions > 0 && (
         <li className={`${BASE}__place`}>
           <Button
-            buttonStyle="icon-label"
+            buttonStyle="ghost"
             className={`${BASE}__versions`}
-            icon={<ChevronIcon direction="right" size="small" />}
+            icon={<ChevronIcon direction="right" size={16} />}
             iconPosition="right"
             margin={false}
             onClick={onHistory}
@@ -411,7 +419,6 @@ const Places: React.FC<{ onHistory: () => void; places: Place[]; t: Translate }>
 type HistoryProps = {
   group: Group
   language: string
-  onBack: () => void
   t: Translate
 }
 
@@ -429,7 +436,7 @@ const REVISION_STYLE = { autosave: 'light-gray', draft: 'warning', published: 's
 const revisionLabel = (revision: Revision): keyof typeof REVISION_STYLE =>
   revision.autosave ? 'autosave' : revision.version?._status === 'published' ? 'published' : 'draft'
 
-export const HistoryView: React.FC<HistoryProps> = ({ group, language, onBack, t }) => {
+export const HistoryView: React.FC<HistoryProps> = ({ group, language, t }) => {
   const { first } = group
   const {
     config: {
@@ -465,19 +472,6 @@ export const HistoryView: React.FC<HistoryProps> = ({ group, language, onBack, t
 
   return (
     <>
-      <div className={`${BASE}__back`}>
-        <Button
-          buttonStyle="pill"
-          icon={<ChevronIcon direction="left" size="small" />}
-          iconPosition="left"
-          margin={false}
-          onClick={onBack}
-          size="small"
-        >
-          {t(`${PLUGIN_NAME}:drawer`)}
-        </Button>
-      </div>
-
       <p className="field-description">{t(`${PLUGIN_NAME}:${showAll ? 'historyHintAll' : 'historyHint'}`)}</p>
 
       {!revisions && <ShimmerEffect height="calc(var(--spacer-6) * 2)" />}
@@ -552,7 +546,7 @@ export const HistoryView: React.FC<HistoryProps> = ({ group, language, onBack, t
 export const NewTab: React.FC<{ t: Translate }> = ({ t }) => (
   <>
     <span aria-hidden="true" className={`${BASE}__new-tab`}>
-      <ExternalLinkIcon />
+      <NewTabIcon size={16} />
     </span>
     <span className={`${BASE}__sr`}>{` ${t(`${PLUGIN_NAME}:newTab`)}`}</span>
   </>
@@ -571,33 +565,3 @@ const ExternalLink: React.FC<{ children: string; href?: string; t: Translate }> 
     </a>
   )
 }
-
-const Tabs: React.FC<{
-  label: string
-  onChange: (value: Filter) => void
-  tabs: { label: React.ReactNode; value: Filter }[]
-  value: Filter
-}> = ({ label, onChange, tabs, value }) => (
-  <fieldset aria-label={label} className={`${BASE}__tabs`}>
-    {tabs.map((tab) => (
-      <Button
-        buttonStyle="tab"
-        extraButtonProps={{ 'aria-pressed': tab.value === value }}
-        key={tab.value}
-        margin={false}
-        onClick={() => onChange(tab.value)}
-      >
-        {tab.label}
-      </Button>
-    ))}
-  </fieldset>
-)
-
-const RefreshIcon: React.FC = () => (
-  <svg className="icon icon--refresh" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-    <path
-      className="stroke"
-      d="M4.5 10a5.5 5.5 0 0 1 9.9-3.3M14.5 3.5v3.3h-3.3M15.5 10a5.5 5.5 0 0 1-9.9 3.3M5.5 16.5v-3.2h3.3"
-    />
-  </svg>
-)

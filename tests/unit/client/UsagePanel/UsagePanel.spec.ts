@@ -39,6 +39,11 @@ describe('usage panel', () => {
 
     expect(host.querySelector('[data-drawer]')?.textContent).toContain('historyHint')
     expect(calls.some((call) => call.url.includes('/api/posts/versions?where[parent][equals]=p%261&'))).toBe(true)
+
+    await click(host.querySelector('[data-drawer] .drawer__header button'))
+
+    expect(host.querySelector('[data-drawer]')?.textContent).not.toContain('historyHint')
+    expect(host.querySelector('[data-drawer]')?.textContent).toContain('Old')
   })
 
   it('says drafts or the trash hold a document, not older versions', async () => {

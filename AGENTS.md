@@ -1,10 +1,10 @@
 # Janitor for Payload
 
-Payload 3 plugin `@seshuk/payload-plugin-janitor`. Match storage against database, find documents nothing reference, in any listed collection, upload or not. Delete only what admin approve. Features: orphan/missing/unused findings, usage panel, delete guard, purge, Payload job or inline start, dashboard widget, storage adapters (`./s3`, `./r2`, `./gcs`, `./azure`, `./bunny`, `./uploadthing`, `./vercelBlob`, `./local`).
+Payload 4 plugin `@seshuk/payload-plugin-janitor`. Match storage against database, find documents nothing reference, in any listed collection, upload or not. Delete only what admin approve. Features: orphan/missing/unused findings, usage panel, delete guard, purge, Payload job or inline start, dashboard widget, storage adapters (`./s3`, `./r2`, `./gcs`, `./azure`, `./bunny`, `./uploadthing`, `./vercelBlob`, `./local`).
 
 ## Environment
 
-- pnpm 12. Node.js 22+. Payload 3.83+.
+- pnpm 12. Node.js 24.15+. Payload 4.
 - Shared dev config from `@seshuk/payload-plugin-tooling` (oxlint, oxfmt, tsconfig, tsdown, CI/release workflows, changelog).
 - Tests need no services: in-memory storage adapter, SQLite in memory, PGlite for Postgres, `mongodb-memory-server` for Mongo, `happy-dom` for components.
 
@@ -30,7 +30,7 @@ Gate: `pnpm typecheck && pnpm lint && pnpm format:check && pnpm test:all && pnpm
 
 ```
 src/
-├── index.ts          # janitor(options), every public export
+├── index.ts          # janitor(options), joins config.storage when set, every public export
 ├── shared/           # isomorphic leaf, imports nothing from server/client
 │   ├── constants.ts  # PLUGIN_NAME, default slugs, endpoints path, min age, widget slug
 │   ├── types/        # options.ts (public JSDoc API), resolved.ts, storage.ts (adapter contract), index.ts (wire shapes)
@@ -67,7 +67,7 @@ tests/
 - **Rescan never overwrite human decision.** Upsert update facts only, never `note`, `keep`, `delete`. Back to `found` only when kind or `documentId` change, or `deleted` seen again. `dropResolved` drop only `found` not seen again, only for (kind, collection) checked. Young items count as seen. Admin write only `status`, `note`.
 - **No document cache.** Everything paged: `eachPage`, `eachVersion` (keyset by id), adapter pages. Upsert and drop per 500. `heartbeat` at most once per minute, also inside `buildUsageIndex({ onProgress })`.
 - **Explicit listing only.** Nothing watched unless under `collections`. `true` = every check collection can have. `endpoints: false` → `usagePanel` off; explicit `usagePanel` without endpoints throw.
-- **Key come from storage plugin, never guessed.** Prefix from `prefix` field default (`storedPrefix`), so janitor go after storage plugins; `validateRuntime` throw on wrong order unless `prefix` passed. Empty default under `orphans`/`missing` → throw (`ambiguous`); explicit `prefix` there without `compositePrefixes` → throw (`notComposite`). Composite: `prefix/<doc prefix>/<_objectKey>/<filename>`. Unknown prefix → compare by key tail. Rewritten doc prefix (`isRewritten`) → match by file name. `unused` on `timestamps: false` → throw.
+- **Key come from storage plugin, never guessed.** Prefix from `prefix` field default (`storedPrefix`). Non-empty `config.storage` → janitor add itself last to `storage` and resolve in its `init`, after every adapter. Storage plugin in `plugins` must go before janitor; `validateRuntime` throw on wrong order unless `prefix` passed. Empty default under `orphans`/`missing` → throw (`ambiguous`); explicit `prefix` there without `compositePrefixes` → throw (`notComposite`). Composite: `prefix/<doc prefix>/<_objectKey>/<filename>`. Unknown prefix → compare by key tail. Rewritten doc prefix (`isRewritten`) → match by file name. `unused` on `timestamps: false` → throw.
 - **Storage is interface.** `list` and `delete` only, contract in `shared/types/storage.ts`. Contract grow by fields, never arguments. `list` walk whole prefix or throw; truncated page without cursor → throw. `delete` resolve when object gone. Nested prefixes on one adapter throw at startup, except `perCollection`.
 - **Resolve options once.** Defaults and startup throws in `resolveOptions`, runtime checks in `validateRuntime`. Downstream take `ResolvedOptions`.
 - **`enabled: false` keep schema.** Both collections (hidden) + `janitor-run` task with no-op handler stay. No endpoints, guard, panel, admin UI, `custom`, `onInit`.
@@ -85,7 +85,7 @@ tests/
 - Imports end in `.js`. `@/` (= `src/`) for any import that leave folder, `./x.js` only in same folder, no `../`. Tests import source through `@/`.
 - Query from hook pass `req.transactionID`: second connection deadlock single-connection DB.
 - Local API always explicit `overrideAccess`: plugin work `true`, on behalf of user `false` plus `user`. `_objectKey` reads need `showHiddenFields: true`.
-- Admin CSS plain, Payload 3 tokens only (`--theme-*`, `--base`, `--style-radius-*`).
+- Admin CSS plain, Payload 4 tokens only (`--color-*`, `--spacer-*`, `--radius-*`).
 - Translations: Payload plural pick `_one` = 1, `_two` = 2, `_few` 3–5, `_many` > 5; string must not make count agree.
 - Match surrounding naming and idiom.
 

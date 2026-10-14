@@ -26,7 +26,7 @@ describe('resolveOptions', () => {
       storage,
       trash: false,
       upload: true,
-      usagePanel: { limit: 0, position: 'sidebar' },
+      usagePanel: { limit: 0, position: 'first' },
     })
   })
 

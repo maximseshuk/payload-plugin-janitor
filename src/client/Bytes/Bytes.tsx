@@ -1,8 +1,7 @@
 'use client'
 
-import { TextInput, useField, useTranslation } from '@payloadcms/ui'
-import { mergeFieldStyles } from '@payloadcms/ui/shared'
-import type { DefaultCellComponentProps, NumberFieldClientComponent } from 'payload'
+import { mergeFieldStyles, TextInput, useField, useTranslation } from '@payloadcms/ui'
+import type { DefaultCellComponentProps, NumberFieldClientProps } from 'payload'
 import React from 'react'
 
 import { bytesOf, localeOf } from '@/client/findingData.js'
@@ -13,7 +12,7 @@ export const BytesCell: React.FC<DefaultCellComponentProps> = ({ cellData }) => 
   return <span>{bytesOf(cellData, i18n.language)}</span>
 }
 
-export const BytesField: NumberFieldClientComponent = ({ field, path }) => {
+export const BytesField = ({ field, path }: NumberFieldClientProps) => {
   const { i18n } = useTranslation()
   const { value } = useField<number>({ path })
 

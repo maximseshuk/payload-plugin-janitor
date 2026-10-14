@@ -16,10 +16,6 @@ export const ui = {
   toast: { error: vi.fn(), info: vi.fn(), success: vi.fn(), warning: vi.fn() },
 }
 
-vi.mock('next/navigation.js', () => ({ useRouter: () => ({ push: ui.push, refresh: ui.refresh }) }))
-
-vi.mock('@payloadcms/ui/shared', () => ({ mergeFieldStyles: () => ({}) }))
-
 vi.mock('@payloadcms/ui', async () => {
   const { createElement, useReducer } = await import('react')
   const t = (key: string, options?: Record<string, unknown>) =>
@@ -53,7 +49,7 @@ vi.mock('@payloadcms/ui', async () => {
     Button: ({ children, onClick }: { children?: unknown; onClick?: () => void }) =>
       createElement('button', { onClick, type: 'button' }, children as never),
     ChevronIcon: icon,
-    DocumentIcon: icon,
+    CircledXIcon: icon,
     ConfirmationModal: ({
       body,
       heading,
@@ -77,19 +73,22 @@ vi.mock('@payloadcms/ui', async () => {
           )
         : null
     },
-    Drawer: ({ children, slug }: { children?: unknown; slug: string }) => {
+    Drawer: ({ children, Header, slug }: { children?: unknown; Header?: unknown; slug: string }) => {
       useModal()
 
-      return ui.open.has(slug) ? createElement('div', { 'data-drawer': slug }, children as never) : null
+      return ui.open.has(slug)
+        ? createElement('div', { 'data-drawer': slug }, (Header ?? null) as never, children as never)
+        : null
     },
     DrawerContentContainer: passthrough,
+    DocumentIcon: icon,
     DrawerToggler: passthrough,
-    ExternalLinkIcon: icon,
     FieldDescription: ({ description }: { description: string }) => createElement('p', null, description),
     FieldLabel: ({ label }: { label?: unknown }) => createElement('label', null, String(label ?? '')),
     fieldBaseClass: 'field-type',
     Link: ({ children, href }: { children?: unknown; href: string }) => createElement('a', { href }, children as never),
     LinkIcon: icon,
+    NewTabIcon: icon,
     Pill: passthrough,
     PopupList: {
       Button: ({
@@ -113,6 +112,7 @@ vi.mock('@payloadcms/ui', async () => {
         { disabled: readOnly },
         field.options.map((option) => createElement('label', { key: option.value }, option.value)),
       ),
+    RefreshIcon: icon,
     ShimmerEffect: () => null,
     Table: ({
       columns,
@@ -138,6 +138,19 @@ vi.mock('@payloadcms/ui', async () => {
           ),
         ),
       ),
+    Tabs: ({ onChange, tabs }: { onChange: (value: string) => void; tabs: { label: unknown; value: string }[] }) =>
+      createElement(
+        'div',
+        null,
+        tabs.map((tab) =>
+          createElement(
+            'button',
+            { key: tab.value, onClick: () => onChange(tab.value), type: 'button' },
+            tab.label as never,
+          ),
+        ),
+      ),
+    mergeFieldStyles: () => ({}),
     TextInput: ({ label, readOnly, value }: { label?: unknown; readOnly?: boolean; value?: string }) =>
       createElement('input', { 'aria-label': String(label ?? ''), readOnly, value }),
     Thumbnail: ({ fileSrc }: { fileSrc?: string }) => createElement('img', { 'data-thumb': fileSrc ?? '' }),
@@ -157,8 +170,8 @@ vi.mock('@payloadcms/ui', async () => {
       count: ui.selection.length,
       getQueryParams: (where?: unknown) => `?where=${JSON.stringify({ and: [where, { id: { in: ui.selection } }] })}`,
     }),
+    useRouter: () => ({ push: ui.push, refresh: ui.refresh }),
     useTranslation: () => ({ i18n: { language: 'en' }, t }),
-    XIcon: icon,
   }
 })
 
