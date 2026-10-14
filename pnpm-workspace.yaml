@@ -1,0 +1,22 @@
+nodeVersion: 22.12.0
+pmOnFail: download
+
+catalog:
+  '@types/node': ^22.20.5
+  '@types/react': 19.3.0
+  '@types/react-dom': 19.3.0
+  react: 19.3.0
+  react-dom: 19.3.0
+  typescript: 7.0.2
+
+allowBuilds:
+  '@scarf/scarf': false
+  core-js: false
+  esbuild: true
+  keytar: false
+  mongodb-memory-server: true
+  oxc-resolver: true
+  puppeteer: false
+  sharp: true
+minimumReleaseAgeExclude:
+  - '@seshuk/payload-plugin-tooling'

@@ -1,0 +1,45 @@
+.janitor-summary__table {
+  width: 100%;
+  border-top: 1px solid var(--theme-border-color);
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-variant-numeric: tabular-nums;
+
+  & th,
+  & td {
+    padding: calc(var(--base) * 0.3);
+    border-right: 1px solid var(--theme-border-color);
+    color: var(--theme-text);
+    font-weight: normal;
+    text-align: start;
+    vertical-align: middle;
+  }
+
+  & th:first-child,
+  & td:first-child {
+    padding-inline-start: calc(var(--base) * 0.6);
+  }
+
+  & th:last-child,
+  & td:last-child {
+    padding-inline-end: calc(var(--base) * 0.6);
+    border-right: none;
+  }
+
+  & thead {
+    background: var(--theme-elevation-50);
+  }
+
+  & thead th {
+    color: var(--theme-elevation-400);
+  }
+
+  & tbody tr {
+    border-top: 1px solid var(--theme-border-color);
+  }
+}
+
+.janitor-summary ~ .field-type.join .relationship-table__header h4 {
+  font: inherit;
+  letter-spacing: normal;
+}

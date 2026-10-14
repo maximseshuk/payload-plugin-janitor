@@ -1,0 +1,237 @@
+{
+  "name": "@seshuk/payload-plugin-janitor",
+  "version": "0.1.0",
+  "description": "Housekeeping for Payload: find orphaned files, broken uploads and documents nothing references, then delete only what you approve.",
+  "keywords": [
+    "cleanup",
+    "cms",
+    "media",
+    "orphaned-files",
+    "payload",
+    "payload-plugin",
+    "payloadcms",
+    "plugin",
+    "s3",
+    "storage",
+    "typescript"
+  ],
+  "homepage": "https://github.com/maximseshuk/payload-plugin-janitor#readme",
+  "bugs": "https://github.com/maximseshuk/payload-plugin-janitor/issues",
+  "license": "MIT",
+  "author": "Maxim Seshuk",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/maximseshuk/payload-plugin-janitor.git"
+  },
+  "funding": {
+    "type": "ko-fi",
+    "url": "https://ko-fi.com/seshuk"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "**/*.css"
+  ],
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "import": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./client": {
+      "types": "./src/client/index.ts",
+      "import": "./src/client/index.ts",
+      "default": "./src/client/index.ts"
+    },
+    "./rsc": {
+      "types": "./src/rsc/index.ts",
+      "import": "./src/rsc/index.ts",
+      "default": "./src/rsc/index.ts"
+    },
+    "./s3": {
+      "types": "./src/adapters/s3.ts",
+      "import": "./src/adapters/s3.ts",
+      "default": "./src/adapters/s3.ts"
+    },
+    "./bunny": {
+      "types": "./src/adapters/bunny.ts",
+      "import": "./src/adapters/bunny.ts",
+      "default": "./src/adapters/bunny.ts"
+    },
+    "./azure": {
+      "types": "./src/adapters/azure.ts",
+      "import": "./src/adapters/azure.ts",
+      "default": "./src/adapters/azure.ts"
+    },
+    "./gcs": {
+      "types": "./src/adapters/gcs.ts",
+      "import": "./src/adapters/gcs.ts",
+      "default": "./src/adapters/gcs.ts"
+    },
+    "./uploadthing": {
+      "types": "./src/adapters/uploadthing.ts",
+      "import": "./src/adapters/uploadthing.ts",
+      "default": "./src/adapters/uploadthing.ts"
+    },
+    "./vercelBlob": {
+      "types": "./src/adapters/vercelBlob.ts",
+      "import": "./src/adapters/vercelBlob.ts",
+      "default": "./src/adapters/vercelBlob.ts"
+    },
+    "./r2": {
+      "types": "./src/adapters/r2.ts",
+      "import": "./src/adapters/r2.ts",
+      "default": "./src/adapters/r2.ts"
+    },
+    "./local": {
+      "types": "./src/adapters/local.ts",
+      "import": "./src/adapters/local.ts",
+      "default": "./src/adapters/local.ts"
+    }
+  },
+  "publishConfig": {
+    "main": "./dist/index.js",
+    "types": "./dist/index.d.ts",
+    "exports": {
+      ".": {
+        "types": "./dist/index.d.ts",
+        "import": "./dist/index.js",
+        "default": "./dist/index.js"
+      },
+      "./client": {
+        "types": "./dist/client/index.d.ts",
+        "import": "./dist/client/index.js",
+        "default": "./dist/client/index.js"
+      },
+      "./rsc": {
+        "types": "./dist/rsc/index.d.ts",
+        "import": "./dist/rsc/index.js",
+        "default": "./dist/rsc/index.js"
+      },
+      "./s3": {
+        "types": "./dist/adapters/s3.d.ts",
+        "import": "./dist/adapters/s3.js",
+        "default": "./dist/adapters/s3.js"
+      },
+      "./bunny": {
+        "types": "./dist/adapters/bunny.d.ts",
+        "import": "./dist/adapters/bunny.js",
+        "default": "./dist/adapters/bunny.js"
+      },
+      "./azure": {
+        "types": "./dist/adapters/azure.d.ts",
+        "import": "./dist/adapters/azure.js",
+        "default": "./dist/adapters/azure.js"
+      },
+      "./gcs": {
+        "types": "./dist/adapters/gcs.d.ts",
+        "import": "./dist/adapters/gcs.js",
+        "default": "./dist/adapters/gcs.js"
+      },
+      "./uploadthing": {
+        "types": "./dist/adapters/uploadthing.d.ts",
+        "import": "./dist/adapters/uploadthing.js",
+        "default": "./dist/adapters/uploadthing.js"
+      },
+      "./vercelBlob": {
+        "types": "./dist/adapters/vercelBlob.d.ts",
+        "import": "./dist/adapters/vercelBlob.js",
+        "default": "./dist/adapters/vercelBlob.js"
+      },
+      "./r2": {
+        "types": "./dist/adapters/r2.d.ts",
+        "import": "./dist/adapters/r2.js",
+        "default": "./dist/adapters/r2.js"
+      },
+      "./local": {
+        "types": "./dist/adapters/local.d.ts",
+        "import": "./dist/adapters/local.js",
+        "default": "./dist/adapters/local.js"
+      }
+    },
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "build:watch": "tsdown --watch",
+    "dev": "JANITOR_DEV=1 TEST_DB=sqlite DATABASE_URI=file:dev.db next dev tests --turbo",
+    "dev:generate-importmap": "cd tests && JANITOR_DEV=1 TEST_DB=sqlite DATABASE_URI=file:dev.db PAYLOAD_CONFIG_PATH=./payload.config.ts payload generate:importmap",
+    "dev:seed": "rm -rf tests/dev.db* tests/dev-media && JANITOR_DEV=1 TEST_DB=sqlite DATABASE_URI=file:dev.db tsx tests/devSeed.ts",
+    "format": "oxfmt",
+    "format:check": "oxfmt --check",
+    "lint": "oxlint",
+    "lint:fix": "oxlint --fix",
+    "screenshots": "pnpm dev:seed && playwright test -c tests/playwright.screenshots.config.ts",
+    "test": "vitest run -c tests/vitest.config.ts",
+    "test:all": "pnpm test:unit && TEST_DB=sqlite pnpm test:int && TEST_DB=sqlite BLOCKS_AS_JSON=1 pnpm test:int && TEST_DB=postgres pnpm test:int && TEST_DB=postgres BLOCKS_AS_JSON=1 pnpm test:int && TEST_DB=mongodb pnpm test:int",
+    "test:int": "vitest run -c tests/vitest.config.ts --project int",
+    "test:stress": "STRESS=1 vitest run -c tests/vitest.config.ts --project int tests/integration/stress.int.spec.ts",
+    "test:unit": "vitest run -c tests/vitest.config.ts --project unit",
+    "test:watch": "vitest -c tests/vitest.config.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.5.9",
+    "@electric-sql/pglite-socket": "0.2.12",
+    "@payloadcms/db-mongodb": "^3.90.2",
+    "@payloadcms/db-postgres": "^3.90.2",
+    "@payloadcms/db-sqlite": "^3.90.2",
+    "@payloadcms/next": "^3.90.2",
+    "@payloadcms/plugin-cloud-storage": "^3.90.2",
+    "@payloadcms/plugin-multi-tenant": "^3.90.2",
+    "@payloadcms/richtext-lexical": "^3.90.2",
+    "@payloadcms/translations": "^3.90.2",
+    "@payloadcms/ui": "^3.90.2",
+    "@playwright/test": "^1.64.0",
+    "@scalar/openapi-types": "^0.9.8",
+    "@seshuk/payload-plugin-tooling": "0.2.4",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
+    "happy-dom": "^21.0.1",
+    "mongodb-memory-server": "^11.3.0",
+    "next": "16.4.0",
+    "oxfmt": "^0.72.0",
+    "oxlint": "^1.87.0",
+    "payload": "^3.90.2",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "tsdown": "^0.23.1",
+    "tsx": "^4.23.15",
+    "typescript": "catalog:",
+    "vitest": "^5.0.4"
+  },
+  "peerDependencies": {
+    "@aws-sdk/client-s3": "^3.0.0",
+    "@payloadcms/translations": "^3.83.0",
+    "@payloadcms/ui": "^3.83.0",
+    "payload": "^3.83.0",
+    "react": "^19.0.1 || ^19.1.2 || ^19.2.1",
+    "react-dom": "^19.0.1 || ^19.1.2 || ^19.2.1"
+  },
+  "peerDependenciesMeta": {
+    "@aws-sdk/client-s3": {
+      "optional": true
+    }
+  },
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "^12.0.0",
+      "onFail": "warn"
+    },
+    "runtime": {
+      "name": "node",
+      "version": ">=22",
+      "onFail": "warn"
+    }
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,140 @@
+.janitor-widget {
+  display: flex;
+  flex-direction: column;
+  gap: calc(var(--base) * 0.6);
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.janitor-widget__title {
+  margin: 0;
+  color: var(--theme-text);
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.card.janitor-widget__body {
+  flex-direction: column;
+  align-items: stretch;
+  gap: calc(var(--base) * 0.6);
+  min-width: 0;
+  padding: calc(var(--base) * 0.8);
+}
+
+.janitor-widget__summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: calc(var(--base) * 0.4) calc(var(--base) * 0.8);
+}
+
+.janitor-widget__fact {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.janitor-widget__fact--end {
+  align-items: flex-end;
+  text-align: end;
+}
+
+.janitor-widget__total {
+  color: var(--theme-text);
+  font-size: calc(var(--base) * 1.2);
+  font-weight: 600;
+  line-height: calc(var(--base) * 1.6);
+  white-space: nowrap;
+}
+
+.janitor-widget__muted {
+  color: var(--theme-elevation-600);
+}
+
+.janitor-widget__strong {
+  color: var(--theme-text);
+}
+
+.janitor-widget__bar {
+  display: flex;
+  gap: 1px;
+  height: calc(var(--base) * 0.4);
+  overflow: hidden;
+  border-radius: var(--base);
+  background: var(--theme-elevation-100);
+}
+
+.janitor-widget__part--orphans {
+  background: var(--theme-success-500);
+}
+
+.janitor-widget__part--unused {
+  background: var(--theme-warning-600);
+}
+
+.janitor-widget__part--missing {
+  background: var(--theme-error-500);
+}
+
+.janitor-widget__stats {
+  display: flex;
+  flex-direction: column;
+  margin: 0 calc(var(--base) * -0.3) calc(var(--base) * -0.3);
+  padding: 0;
+  list-style: none;
+}
+
+.janitor-widget__stat {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: calc(var(--base) * 0.4);
+  padding: calc(var(--base) * 0.3);
+  border-radius: var(--style-radius-m);
+  color: var(--theme-elevation-600);
+  text-decoration: none;
+}
+
+@media (hover: hover) {
+  .janitor-widget__stat--link:hover {
+    background: var(--theme-elevation-100);
+    color: var(--theme-text);
+    text-decoration: none;
+  }
+}
+
+.janitor-widget__stat--link:focus-visible {
+  background: var(--theme-elevation-100);
+  color: var(--theme-text);
+}
+
+.janitor-widget__stat-label {
+  display: flex;
+  align-items: center;
+  gap: calc(var(--base) * 0.4);
+  min-width: 0;
+}
+
+.janitor-widget__dot {
+  flex: none;
+  width: calc(var(--base) * 0.4);
+  height: calc(var(--base) * 0.4);
+  border-radius: 50%;
+}
+
+.janitor-widget__empty {
+  margin: 0;
+  color: var(--theme-elevation-600);
+}
+
+.janitor-widget__empty a {
+  color: inherit;
+  text-decoration: underline;
+}
+
+@media (hover: hover) {
+  .janitor-widget__empty a:hover {
+    color: var(--theme-text);
+  }
+}

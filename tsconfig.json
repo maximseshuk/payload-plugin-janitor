@@ -1,0 +1,14 @@
+{
+  "extends": "@seshuk/payload-plugin-tooling/tsconfig.json",
+  "compilerOptions": {
+    "jsx": "react-jsx",
+    "noUncheckedIndexedAccess": true,
+    "noEmit": true,
+    "rootDir": "./",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "include": ["./src/**/*.ts", "./src/**/*.tsx", "./tests/**/*.ts"],
+  "exclude": ["./tests/app/**/*", "./tests/.next/**/*"]
+}

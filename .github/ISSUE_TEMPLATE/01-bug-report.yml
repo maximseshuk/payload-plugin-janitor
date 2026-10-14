@@ -1,0 +1,79 @@
+name: Bug Report
+description: Report a bug or unexpected behavior
+title: '[Bug]: '
+labels: ['bug', 'needs-triage']
+assignees: []
+
+body:
+  - type: checkboxes
+    id: prerequisites
+    attributes:
+      label: Prerequisites
+      options:
+        - label: I have searched existing issues to ensure this bug hasn't been reported already
+          required: true
+        - label: I have read the [documentation](https://github.com/maximseshuk/payload-plugin-janitor#readme)
+          required: true
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Describe the Bug
+      description: Tell us what happened, what you expected, and how to reproduce the issue
+      placeholder: |
+        What happened:
+        What you expected:
+        Steps to reproduce:
+        1.
+        2.
+        3.
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Plugin Configuration
+      description: Share your plugin setup and your storage plugin setup (**remove API keys and sensitive data**)
+      placeholder: |
+        ```typescript
+        s3Storage({ bucket: 'assets', collections: { media: true }, config: { region: 'eu-central-1' } }),
+        janitor({
+          collections: { media: true },
+          storage: s3Adapter({ bucket: 'assets', config: { region: 'eu-central-1' } }),
+        })
+        ```
+      render: typescript
+    validations:
+      required: true
+
+  - type: textarea
+    id: versions
+    attributes:
+      label: Environment Info
+      description: |
+        Paste output from `pnpm payload info` or list your versions, including the database adapter.
+        Please use specific version numbers instead of "latest" to help us debug faster.
+      placeholder: |
+        @seshuk/payload-plugin-janitor: 0.1.0
+        payload: 3.90.2
+        @payloadcms/db-postgres: 3.90.2
+        next: 16.3.6
+        node: 22.12.0
+      render: shell
+    validations:
+      required: true
+
+  - type: input
+    id: code-link
+    attributes:
+      label: Link to reproduction code (if needed)
+      description: Optional link to minimal reproduction repository
+      placeholder: https://github.com/username/repo
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Error Logs
+      description: Error messages, stack traces, or console logs
+      render: shell
