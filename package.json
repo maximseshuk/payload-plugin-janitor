@@ -196,7 +196,7 @@
     "@types/react-dom": "catalog:",
     "happy-dom": "^21.0.1",
     "mongodb-memory-server": "^11.3.0",
-    "next": "16.4.0",
+    "next": "16.4.2",
     "oxfmt": "^0.72.0",
     "oxlint": "^1.87.0",
     "payload": "4.0.0-beta.4",
