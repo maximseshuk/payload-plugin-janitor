@@ -1,6 +1,6 @@
 {
   "name": "@seshuk/payload-plugin-janitor",
-  "version": "1.0.0-beta.1",
+  "version": "1.0.0-beta.2",
   "description": "Housekeeping for Payload: find orphaned files, broken uploads and documents nothing references, then delete only what you approve.",
   "keywords": [
     "cleanup",
