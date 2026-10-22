@@ -64,13 +64,13 @@ A run record shows what a scan found in each collection:
 
 ### Versions
 
-| Plugin | Payload | Node.js | Install                               |
-| ------ | ------- | ------- | ------------------------------------- |
-| 1.x    | 4       | 24.15+  | `@seshuk/payload-plugin-janitor@beta` |
-| 0.x    | 3       | 22+     | `@seshuk/payload-plugin-janitor@0`    |
+| Plugin | Payload | Node.js  | Install                               |
+| ------ | ------- | -------- | ------------------------------------- |
+| 1.x    | 4       | 24.22.1+ | `@seshuk/payload-plugin-janitor@beta` |
+| 0.x    | 3       | 22+      | `@seshuk/payload-plugin-janitor@0`    |
 
 - 1.x is in beta under the `beta` npm tag. Payload 4 is published under `beta` too.
-- 1.x needs Payload `4.0.0-beta.0` or later and Next.js 16.4 or later. Canary builds are not supported.
+- 1.x needs Payload `4.0.0-beta.4` or later and Next.js 16.4 or later. Canary builds are not supported.
 - 0.x needs Payload 3.83 or later.
 - Usage detection needs the Postgres, SQLite or MongoDB database adapter.
 

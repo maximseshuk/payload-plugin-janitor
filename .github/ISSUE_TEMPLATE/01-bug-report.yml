@@ -63,7 +63,7 @@ body:
         payload: 4.0.0-canary.38
         @payloadcms/db-postgres: 4.0.0-canary.38
         next: 16.4.0
-        node: 24.15.0
+        node: 24.22.1
       render: shell
     validations:
       required: true

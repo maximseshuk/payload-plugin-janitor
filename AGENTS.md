@@ -4,7 +4,7 @@ Payload 4 plugin `@seshuk/payload-plugin-janitor`. Match storage against databas
 
 ## Environment
 
-- pnpm 12. Node.js 24.15+. Payload 4.
+- pnpm 12. Node.js 24.22.1+. Payload 4.
 - Shared dev config from `@seshuk/payload-plugin-tooling` (oxlint, oxfmt, tsconfig, tsdown, CI/release workflows, changelog).
 - Tests need no services: in-memory storage adapter, SQLite in memory, PGlite for Postgres, `mongodb-memory-server` for Mongo, `happy-dom` for components.
 
@@ -101,10 +101,10 @@ tests/
 
 ## Branches
 
-| Branch | Major | Payload | Node   | Takes                                                                                    |
-| ------ | ----- | ------- | ------ | ---------------------------------------------------------------------------------------- |
-| `main` | 1.x   | 4       | 24.15+ | all work; PRs target `main`                                                              |
-| `0.x`  | 0.x   | 3       | 22+    | critical and high-severity security fixes only, cherry-picked from `main` where possible |
+| Branch | Major | Payload | Node     | Takes                                                                                    |
+| ------ | ----- | ------- | -------- | ---------------------------------------------------------------------------------------- |
+| `main` | 1.x   | 4       | 24.22.1+ | all work; PRs target `main`                                                              |
+| `0.x`  | 0.x   | 3       | 22+      | critical and high-severity security fixes only, cherry-picked from `main` where possible |
 
 ## Releases
 
