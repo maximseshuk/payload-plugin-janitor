@@ -248,7 +248,7 @@ export const StatusField: React.FC<RadioFieldClientProps> = (props) => {
   return <RadioGroupField {...props} field={{ ...props.field, options }} readOnly={deleted || props.readOnly} />
 }
 
-export const StatusDescription = ({ path }: RadioFieldDescriptionClientProps) => {
+export const StatusDescription: React.FC<RadioFieldDescriptionClientProps> = ({ path }) => {
   const { t } = useTranslation()
   const { value } = useFinding()
   const missing = value('kind') === 'missing'

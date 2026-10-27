@@ -1,5 +1,5 @@
 import { definePlugin } from 'payload'
-import type { Config } from 'payload'
+import type { Config, Plugin } from 'payload'
 
 import { buildFindingsCollection } from '@/server/collections/findings.js'
 import { buildRunsCollection } from '@/server/collections/runs.js'
@@ -103,7 +103,7 @@ const withPlugin = (options: JanitorPluginOptions, config: Config): Config => {
   }
 }
 
-export const janitor = definePlugin<JanitorPluginOptions>({
+export const janitor: (options: JanitorPluginOptions) => Plugin = definePlugin<JanitorPluginOptions>({
   slug: PLUGIN_NAME,
   plugin: ({ config, options }) => {
     if (options.enabled === false) return withSchema(options, config)

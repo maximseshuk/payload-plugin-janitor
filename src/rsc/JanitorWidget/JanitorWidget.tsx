@@ -17,7 +17,7 @@ const STATS = [
   ['missing', 'missing'],
 ] as const
 
-export const JanitorWidget = async ({ permissions, req }: WidgetServerProps) => {
+export const JanitorWidget: React.FC<WidgetServerProps> = async ({ permissions, req }) => {
   const options = janitorOptions(req.payload)
 
   const can = (slug: string) => Boolean(permissions?.collections?.[slug]?.read)

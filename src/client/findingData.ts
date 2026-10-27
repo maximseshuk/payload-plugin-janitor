@@ -95,7 +95,7 @@ const SPANS = [
   ['year', Infinity],
 ] as const
 
-export const agoOf = (value: unknown, language: string, now = Date.now()): string => {
+export const agoOf = (value: unknown, language: string, now: number = Date.now()): string => {
   const time = typeof value === 'string' ? Date.parse(value) : Number.NaN
 
   if (Number.isNaN(time)) return ''

@@ -81,7 +81,7 @@ export const walkIds = (value: unknown, onMatch: (id: string, path: string) => v
   return complete
 }
 
-export const UNREADABLE = Symbol('unreadable')
+export const UNREADABLE: unique symbol = Symbol('unreadable')
 
 export const parseJson = (value: unknown): unknown => {
   if (value instanceof ArrayBuffer || ArrayBuffer.isView(value)) return UNREADABLE
