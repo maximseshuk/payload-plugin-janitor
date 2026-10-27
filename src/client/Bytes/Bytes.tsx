@@ -12,7 +12,7 @@ export const BytesCell: React.FC<DefaultCellComponentProps> = ({ cellData }) => 
   return <span>{bytesOf(cellData, i18n.language)}</span>
 }
 
-export const BytesField = ({ field, path }: NumberFieldClientProps) => {
+export const BytesField: React.FC<NumberFieldClientProps> = ({ field, path }) => {
   const { i18n } = useTranslation()
   const { value } = useField<number>({ path })
 

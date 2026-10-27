@@ -16,7 +16,7 @@ const SUMMARY = 'janitor-summary'
 
 const TALLIES: Tally[] = ['orphans', 'missing', 'unused', 'deleted', 'notDeleted']
 
-export const RunSummary = async ({ data, id, req }: UIFieldServerProps) => {
+export const RunSummary: React.FC<UIFieldServerProps> = async ({ data, id, req }) => {
   const run = (data ?? {}) as Record<string, unknown>
 
   if (id === undefined || (run.mode !== 'scan' && run.mode !== 'purge')) return null

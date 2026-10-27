@@ -5,7 +5,9 @@
     "rootDir": "./src",
     "outDir": "./dist",
     "noEmit": false,
-    "declaration": true
+    "declaration": true,
+    "isolatedDeclarations": true,
+    "allowJs": false
   },
   "include": ["./src/**/*.ts", "./src/**/*.tsx"],
   "exclude": ["./tests"]
